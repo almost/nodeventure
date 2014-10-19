@@ -1,8 +1,12 @@
 [![Nodeventure][banner]](http://nodeventure.asyncjs.com)
 
-A multiplayer [text adventure][text-adventure], created together at [Async][async] in Brighton at the [Lab for the Recently Possible][l4rp]. Part of the [Brighton Digital Festival][bdf].
+A multiplayer [text adventure][text-adventure].
 
-You can play it at: http://nodeventure.asyncjs.com
+
+We've created versions together at [Async][async] in Brighton and at the
+[Lab for the Recently Possible][l4rp].
+
+Async.JS versionis online here: http://nodeventure.asyncjs.com
 
 
 Getting started
@@ -11,7 +15,7 @@ Getting started
 See the [Nodeventure wiki][wiki].
 
 
-Details for the day
+Details for the day (async.js version)
 -------------------
 
 Two hack nights: on [12th September][event-1] and [26th September][event-2] 2013, from 7.15pm.
