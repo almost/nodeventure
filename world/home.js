@@ -3,9 +3,15 @@ room('home', {
   exits: { 
 	west: 'beige', 
 	east: 'tenforward',
-	south: 'marksfroom' 
+	south: 'marksroom' 
   },
   items: [
-  	'rubber chicken with a pulley in the middle'
+    'rubber chicken with a pulley in the middle',
+    {
+      name: 'door',
+      short: 'a locked wooden door',
+      description: 'There is an intriguing wooden door with no handle on the north wall',
+      gettable : false
+    }
   ]
 });
