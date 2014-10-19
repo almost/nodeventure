@@ -117,7 +117,7 @@ command('i', "Display a list of all the items you're carrying.", function (rest,
   player.execute('inventory');
 });
 
-command('use', 'Example: use lemon',function (rest, player, item) {
+command('use:*', 'Example: use lemon',function (rest, player, item) {
   player.write("Can't use " + rest);
 });
 
