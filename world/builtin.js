@@ -69,6 +69,7 @@ command('take', function(rest, player, game) {
 
 command('drop', 'Leave an item from your inventory in the current room.', function (itemName, player, game) {
   var item = _.find(player.inventory, function (it) {
+    console.log(it);
     return itemName === it.name;
   });
   if (item) {

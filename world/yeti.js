@@ -7,7 +7,7 @@ handler('tick', function () {
   // every 30 minutes on average
   if (Math.random() * 30 < 1) {
     var room = yeti.getCurrentRoom(),
-        exits = _.keys(room.exits),
+        exits = _.keys(room.exits || []),
         i = Math.floor(Math.random()*exits.length),
         exit = exits[i];
     room.broadcast('The Yeti picks himself up and heads to the ' + exit + ' exit');

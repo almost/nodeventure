@@ -1,6 +1,0 @@
----
-image: "http://api.ning.com/files/4JDD2fK0Tk*YIVPzwCg1u5FXz-WiHOaN-nAhloBxKg*QKhdzjVO7l3M1tXGZSeZVuk7cQoy6jRG-LJ*iED4AECnCTGIVFcsT/Miss_Magnolia.jpg"
-exits:
-  west: home
----
-This room is daubed in magnolia. You stare at it for a while.
