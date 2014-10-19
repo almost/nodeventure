@@ -1,7 +1,7 @@
 
 room('tenforward', {
 description: "You are in Ten Forward. Please drink responsibly",
-exits: { north: 'sickbay' },
+exits: { north: 'sickbay', west:'home' },
 items: [
    {
     name: 'prune juice',
