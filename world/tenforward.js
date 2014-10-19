@@ -11,13 +11,3 @@ items: [
   }
 ]
 });
-
-handler("drink:prune juice", function (game, player, item) {
-var rest = item.name;
-player.write("You drink the " + rest + " and it tastes horrible");
-player.getCurrentRoom().broadcast(player.name + ' drinks the ' + rest + " and convulses", player);
-player.getCurrentRoom().broadcast("Worf slays" + player.name + "with his bat\'leth. Dishonour on your house");
-player.inventory = _.without(player.inventory, item);
-game.emit("invdrop:"+item.name, rest, player, game);
-preventDefault();
-});
