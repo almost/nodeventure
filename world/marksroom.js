@@ -1,7 +1,7 @@
 room('marksroom', {
   description: "You find yourself in an immaculately-decorated Louis XVI bedroom. The room is lit by illuminated floor tiles. In the centre of the room stands a tall, black monolith",
   //image: null,
-  exits: { },
+  exits: { north: 'home' },
   items: [
     {
       name: 'monolith',
