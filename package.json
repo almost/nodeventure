@@ -12,16 +12,17 @@
     "nodeventure.asyncjs.com"
   ],
   "dependencies": {
-    "underscore": "*",
-    "socket.io": "*",
     "express": "*",
+    "nodemon": "^2.0.22",
+    "socket.io": "*",
+    "underscore": "*",
     "vm2": "*"
   },
-  "optionalDependencies": {},
   "engines": {
     "node": "*"
   },
   "scripts": {
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
   }
 }

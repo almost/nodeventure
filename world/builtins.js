@@ -209,6 +209,10 @@ command('look', 'Get a list of people and items in the current room or get a des
   }
 });
 
+command('see', 'Start looking at the world with a fresh set of eyes', function(_rest, player, game) {
+  player.display.draw("hello", player.getCurrentRoom().items);
+})
+
 command('iam', 'Change the description provided when someone looks at you.', function (rest, player, game) {
   player.description = rest;
 });

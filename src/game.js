@@ -267,6 +267,9 @@ _.extend(Display.prototype, {
   show: function (imageUrl, id, style) {
     this._command("show", [imageUrl, id, style]);
   },
+  draw: function (id, items) {
+    this._command("draw", [id, items]);
+  },
   _command: function (command, args) {
     this.broadcast.call(this.object, {display: {command: command, arguments: args}});
   }
