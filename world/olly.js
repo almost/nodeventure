@@ -1,10 +1,60 @@
 room("olly", {
-  description: "This is the place of ollynesssssssss",
+  description: "19:51 This is the place of ollynesssssssss",
   exits: {
     south: "home2",
     sky: "broom cupboard",
   }
 });
+
+
+
+item('olly', 'compass', {
+    image: 'http://skyapperley.co.uk/nodeadventure/red-vial.png',
+    respawnTime: 10,
+    width:60,
+    height:100,
+    top:350,
+    left:70 ,
+    short: 'compass',
+    description: 'map compasss to make a map'
+  });
+
+
+itemCommand('map', 'compass', 'make a map with the compass', function(rest, player, item, game){
+    player.write('Just mapping things out...');
+    var mermaid_txt = "flowchart TD  ";
+    var ri = 0;
+    var room_map = {};
+    for (var r in game.rooms) {
+         ri += 1;
+         room_map[r] = ri
+         player.write('map ' +room_map)
+        // for (var e in r.exits) {
+        //     // have r room and e exit
+        //     mermaid_txt = mermaid_txt + r.id + ' --' ; //+ e.vaue() + '-->' + e.key() + '\n';
+        // }
+        // player.write('this ' + game.rooms[r].id)
+        
+        for (var e in game.rooms[r].exits) {
+           
+            // player.write('exits ' + e + game.rooms[r].exits[e])
+            // player.write('exists ' + e)
+            
+            // if (game.rooms[r].exits[e].includes())
+            player.write('Exist number '+ room_map[game.rooms[r].exits[e]])
+            var exit_room = room_map[game.rooms[r].exits[e]] + '['+game.rooms[r].exits[e]+']'
+            
+            
+            mermaid_txt = mermaid_txt + room_map[r] + '['+r +']'+ ' --' + e +'--> ' + exit_room + ' ; ' //+ ' --> ' + game.rooms[r].exits[e])
+        }
+      }
+      
+    player.write('This is it so far \n' + mermaid_txt)
+    
+    // player.display.addScript()
+    // player.display.eval()
+
+  });
 
 
 // item("olly", "banna",{

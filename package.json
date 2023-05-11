@@ -12,12 +12,11 @@
     "nodeventure.asyncjs.com"
   ],
   "dependencies": {
-    "underscore": "*",
-    "socket.io": "*",
     "express": "*",
+    "socket.io": "*",
+    "underscore": "*",
     "vm2": "*"
   },
-  "optionalDependencies": {},
   "engines": {
     "node": "*"
   },

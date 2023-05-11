@@ -43,12 +43,26 @@ _.extend(Game.prototype, {
   // Create or return a room. Usuaully used by the fascade in loader.js
   createRoom: function (id, options) {
     var room = this.rooms[id] = this.rooms[id] || new Room(this,id);
-    _(room).chain()
-      .extend(options)
-      .defaults({
-        items: []
-      })
-      .value();
+    Object.assign(room, options);
+    room.items = room.items || [];
+
+    for(let exit in room.exits) {
+      let reverseFound = false;
+      const toroom = this.rooms[room.exits[exit]];
+      if (toroom) {
+        for(let reverseExit in toroom.exits) {
+          if (toroom.exits[reverseExit] === id) {
+            reverseFound = true;
+          }
+        }
+        if (!reverseFound && this._loadingModule) {
+          this._loadingModule.console.log("[ROOM " + id + "] Missing inverse of exit: " + exit + ". How are people meant to get back?")
+        } else {
+          // console.log("Found reverse for: " + exit)
+        }
+      }
+    }
+
     return room;
   },
   createCommand: function (command, description, fun) {

@@ -10,7 +10,8 @@ room("The Hop Poles", {
   description: "You are in a busy pub in the lanes. There's beer everywhere. Through the back exit you can see a small crowd of nerds sat at a table.",
   exits: {
     "frontdoor": "Middle Street",
-    "backdoor": "Beer Garden"
+    "backdoor": "Beer Garden",
+    "cellar": "The Cellar",
   }
 });
 
@@ -39,7 +40,7 @@ item("The Hop Poles", "Beer", {
     description: "An ice cold beer",
     image: "",
 });
-
+x
 itemCommand("drink", "Beer", "Delicious", (rest, player, item, game) => {
     const room = player.getCurrentRoom();
     room.broadcast(player.name + " sits on the chair, they are in the " + room.name);
@@ -67,3 +68,17 @@ const pokeRemi = (_1,_2,_3,game) => {
 };
 
 itemCommand("poke", "remi", pokeRemi);
+
+const killAllRemis = (_1,_2,_3,game) => {
+    
+    game.broadcast(`JAKE is trying to kill all the remis!!! Go get im!!`);
+  
+
+//   for (var i = 0; i < game.remiCount; i++) {
+//     itemCommand("poke", `remi${game.remiCount + 1}`, pokeRemi);
+//   }
+  
+//   game.remiCount = 0;
+};
+
+itemCommand("killallremis", killAllRemis);

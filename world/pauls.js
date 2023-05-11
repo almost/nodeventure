@@ -8,8 +8,16 @@ room("broom cupboard", {
 item("home", "map", {
     description: "A magical map. It smarkles with magic",
     short: 'map',
-    respwnTime: 3600,
+    respawnTime: 60,
 });
+
+
+item("home2","map",{
+    description: "A magical map. It smarkles with magic",
+    short: 'map',
+    respawnTime: 60,
+});
+
 const max_w = 20;
 const max_h = 10;
 
@@ -30,7 +38,7 @@ const iterateMap = function(parent,exitName,room,game,ttl,mapArr,data,rooms,room
     if(roomNum>9){
         return;
     }
-    console.log(`next room: ${room} ${ttl} x=${data.x} y=${data.y} n=${roomNum}`);
+    //console.log(`next room: ${room} ${ttl} x=${data.x} y=${data.y} n=${roomNum}`);
     
     
     var exits = room && room.exits;

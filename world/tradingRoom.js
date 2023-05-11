@@ -7,7 +7,7 @@ item("tradingFloor", "computer", {
     image: '/files/chair.jpg',
     description: "This is a computer",
     short: 'a computer to trade on',
-    respwnTime: 120,
+    respawnTime: 120,
 });
 
 const generateTickers = (numberOfTickers) => {
@@ -21,4 +21,3 @@ const generateTickers = (numberOfTickers) => {
 
 
 console.log(generateTickers(30));
-

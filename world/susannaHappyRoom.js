@@ -12,6 +12,29 @@ item("susanna's happy place", "a zen room",{
   description: "A relaxing, modernist room with chilled lighting"
 });
 
+item("susanna's happy place", "zen_garden", {
+   image:  '/files/sand_garden.png',
+   short: "zen_garden",
+   respawnTime: 1,
+   description: "We are nothing but dust so just enjoy"
+});
+
+// const key = item("susanna's happy place", "key",  {
+//     short: "key",
+//     respawnTime: 1,
+//     description: "Might open something"
+// });
+
+itemCommand('rake','zen_garden', function (rest, player, item, game) {
+    player.write(player.name + ' has raked the sand peacefully');
+    
+    const prizes = ["a lovely key", "Olly's soul", "a massive ruby", "their hopes and dreams", "a sheep", "assorted lint", "coffee"];
+    const prize = prizes[Math.floor(Math.random() * prizes.length)];
+    player.write(player.name + ' has found ' + prize + ' and may it bring them good luck!');
+    // player.write(player.name + ' has found key');
+    // player.receive(player, key);
+});
+
 // handler('tick', () => {
 //     console.log(Object.keys(game.commands))
 // })

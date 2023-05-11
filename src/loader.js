@@ -4,6 +4,7 @@
  */
 const {VM}        = require('vm2');
 const fs          = require("fs");
+const util        = require("util");
 const game        = require('./game');
 const _           = require('underscore');
 const WorldModule = require('./world').WorldModule;
@@ -41,7 +42,7 @@ _.extend(Loader.prototype, {
     var files = fs.readdirSync(this.path),
         _this = this;
     for (var i = 0; i < files.length; i++) {
-        var file = files[i],
+        let file = files[i],
             fileLower = file.toLowerCase(),
             fullPath = this.path + "/" + file,
             isFile = fs.statSync(fullPath).isFile(),
@@ -64,9 +65,13 @@ _.extend(Loader.prototype, {
                 module.console = {
                   log(...args) {
                     console.log(`[${file}] `, ...args);
+                    args = args.map(x => util.inspect(x));
                     fs.appendFileSync(logPath, args.join(" ") + "\n");
                   }
                 }
+                module.require = function () {
+                  throw new Error("No no no no")
+                };
                 const vm = new VM({
                   sandbox: module
                 });
@@ -77,7 +82,9 @@ _.extend(Loader.prototype, {
 
                 try {
                   console.log("Loading " + file)
-                  vm.run(code, {filename: fullPath});
+                  this.game._loadingModule = module;
+                  vm.run(code, { filename: fullPath });
+                  this.game._loadingModule = null;
                   if (fs.existsSync(errorPath)) {
                     fs.unlinkSync(errorPath);
                   }

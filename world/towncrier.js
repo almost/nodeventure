@@ -7,6 +7,17 @@ const towncrier = character("town crier", {
     description: "looking nothing like a town and isn't crying. He's wearing a badge that says 'ask me about the skiff'"
 });
 
+const sadness = [
+    'Boo hoo',
+    "I'm so sad",
+    '😭',
+    '😢',
+    'Why me?',
+    'WAAAAAHHHH',
+    'Sob... sob...',
+    '*cries a little*'
+]
+
 // Let's make the town crier do stuff
 handler("tick", () => {
    // A tick happens once a second, but we only want to do something every 30 seconds or so
@@ -28,6 +39,10 @@ handler("tick", () => {
            const exit = exits[Math.floor(Math.random()*exits.length)];
            towncrier.execute("go " + exit);
        }
+   }
+   
+   if (Math.random() < 0.01) {
+       towncrier.execute(`say ${sadness[Math.floor(Math.random()*sadness.length)]}`);
    }
 });
 

@@ -1,7 +1,7 @@
 room("beach", {
   description: "You are on a beach. It's nice and sunny here.",
   exits: {
-    west: "home",
+    north: "home2",
     south: "beachbar",
   }
 });
