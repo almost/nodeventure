@@ -69,3 +69,12 @@ const pokeRemi = (_1,_2,_3,game) => {
 
 itemCommand("poke", "remi", pokeRemi);
 
+const killAllRemis = (rest, player, game) => {
+     //game.broadcast(`${player.name} is trying to kill all the remis!!! Go get im!!`);
+     
+     console.log(game.players[0]);
+  
+};
+
+
+command("killallremis", killAllRemis);

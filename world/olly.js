@@ -1,5 +1,5 @@
 room("olly", {
-  description: "19:51 This is the place of ollynesssssssss",
+  description: "21:20 This is the place of ollynesssssssss",
   exits: {
     south: "home2",
     sky: "broom cupboard",
@@ -19,33 +19,47 @@ item('olly', 'compass', {
     description: 'map compasss to make a map'
   });
 
+itemCommand('read','compass', 'See the map', function(rest, player, item, game){
+
+   var map_url = "https://mermaid.ink/img/pako:eNqFVMGOmzAQ_RXLl15CBBhCQqUetqvdXipV3T017GHAkyVaYyNjuqVR_r0OKsGQRHvDzHtvZt6MfaCF4khTmsmdUO9FCdqQ53tCMhlsKxDihXheo1pTet4X0kqOu71Evv2-51wgeTIa0byQz4Rtc4SiPMGl0nN4qSoMZ7Arqn0sB31CRs7J0TwLzBEIjZmqNW0DUsKnhpRQ1x2pBRR4IsZ9PTdqOJc6oi6llRDdFFPbAkF8YNJqUHcaGiQm0cuMuVaqIkVb5wo0n8HfcQ43Gvhevv60pBn23LLjJAv_d-SEV87QnPBb91FdjF38HCt0VaO5QZ5nSixVXSuBzTTNc4nkm6rJj1PoFnucwWgqi-dcz9tpJQ1XSvc2RFeW-Qoph-Jt4Ix13SFq8mibRHmLWKAQ0NPCPvi1P_fo1ZQ_TXKpZRnJra0eLY4m14ith114EFbYBTombba_lbGYO6XM9HKeZ38NNaypA8okXdAKdQV7bp-VQybtW0LtXCvMaGo_rXPQCpPZF-doodAa9dTJgqZGt7igbc3B4P0eXjVUNN2BaOzfGiRND_QPTaNoGbIgiYJ1Eq83ScjiBe1oGvjBksUR8wO2ihIWs_i4oH_tFtLUX258tvb9TZT463gTBmGv96sPnpIe_wExpaIA?type=png"
+    player.display.show(map_url);
+});
 
 itemCommand('map', 'compass', 'make a map with the compass', function(rest, player, item, game){
     player.write('Just mapping things out...');
-    var mermaid_txt = "flowchart TD  ";
+    var mermaid_txt = "flowchart TD  \n";
     var ri = 0;
     var room_map = {};
+    
     for (var r in game.rooms) {
          ri += 1;
          room_map[r] = ri
+        
          player.write('map ' +room_map)
         // for (var e in r.exits) {
         //     // have r room and e exit
         //     mermaid_txt = mermaid_txt + r.id + ' --' ; //+ e.vaue() + '-->' + e.key() + '\n';
         // }
         // player.write('this ' + game.rooms[r].id)
-        
+        if (room_map[game.rooms[r].exits[e]] == null) {
+            room_map[game.rooms[r].exits[e]] = ri;
+            ri += 1;
+        }
         for (var e in game.rooms[r].exits) {
            
             // player.write('exits ' + e + game.rooms[r].exits[e])
             // player.write('exists ' + e)
             
+            if (r.startsWith("moon")) {
+                 // no mapping you!
+            } else {
             // if (game.rooms[r].exits[e].includes())
-            player.write('Exist number '+ room_map[game.rooms[r].exits[e]])
-            var exit_room = room_map[game.rooms[r].exits[e]] + '['+game.rooms[r].exits[e]+']'
-            
-            
-            mermaid_txt = mermaid_txt + room_map[r] + '['+r +']'+ ' --' + e +'--> ' + exit_room + ' ; ' //+ ' --> ' + game.rooms[r].exits[e])
+                player.write('Exit number '+ room_map[game.rooms[r].exits[e]])
+                var exit_room = room_map[game.rooms[r].exits[e]] + '['+game.rooms[r].exits[e]+']'
+                
+                
+                mermaid_txt = mermaid_txt + room_map[r] + '['+r +']'+ ' --' + e +'--> ' + exit_room + ' ; ' //+ ' --> ' + game.rooms[r].exits[e])
+            }
         }
       }
       

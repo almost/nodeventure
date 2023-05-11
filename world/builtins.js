@@ -156,13 +156,23 @@ command('teleport', '"teleport <player>" teleports you to the location of anothe
 });
 
 command('say', "Say something to whoever is in the current room", function (rest, player, game) {
-  player.getCurrentRoom().broadcast(player.name + ' says: ' + rest.trim(), player);
-  player.write('You say: ' + rest.trim());
-  game.emit('playerTalk', player, rest);
+  if (player.lastSay && Date.now()-player.lastSay < 500) {
+      player.write("You're talking WAAAAAAY too fast, take a breath")
+  } else {
+      player.getCurrentRoom().broadcast(player.name + ' says: ' + rest.trim(), player);
+      player.write('You say: ' + rest.trim());
+      game.emit('playerTalk', player, rest, game);
+  }
+  player.lastSay = Date.now();
 });
 
 command('shout', "Say something so loud that all connected players can hear", function (rest, player, game) {
-  game.broadcast(player.name + ' shouts: ' + rest);
+  if (player.lastShout && Date.now()-player.lastShout < 3000) {
+      player.write("You're shouting too much, wait a few secs before doing it again")
+  } else {
+    game.broadcast(player.name + ' shouts: ' + rest);
+  }
+  player.lastShout = Date.now();
 });
 
 command('list', "List all players in the game.", function (rest, player, game) {
@@ -219,6 +229,15 @@ command('iam', 'Change the description provided when someone looks at you.', fun
 
 command('whoami', 'Who ARE you?', function (rest, player, game) {
   player.write("You are " + player.name)
+});
+
+command('who', 'Who is here?', function (rest, player, game) {
+    player.write("Player's in the world: ")
+    for (let p in game.players) {
+        if (!game.players[p].npc) {
+            player.write(p)
+        }
+    }
 });
 
 command('tell', function (rest, player, game) {

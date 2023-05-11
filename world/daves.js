@@ -10,7 +10,8 @@ room("beachbar", {
   description: "You are in a chill tropical beach bar.",
   exits: {
     north: "beach",
-    east: "susanna's happy place"
+    east: "susanna's happy place",
+    south: "First Jedi Temple"
   }
 });
 

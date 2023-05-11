@@ -3,12 +3,12 @@ room("mall", {
   exits: {
     south: "Middle Street"
   }
-});
+})
 
 const darth = character("DarthAtTheMall", {
     location: "mall",
     description: "seems to be wearing all red, is he trying to emulate a roulette chip?"
-});
+})
 
 handler("tick", () => {
    // A tick happens once a second, but we only want to do something every 30 seconds or so
@@ -16,29 +16,16 @@ handler("tick", () => {
    {
        rand = Math.random();
        if (rand < 0.1)
-           darth.execute("what happens in dagobah stays in dagobah)");
+           darth.broadcast("What happens in Dagobah stays in Dagobah")
        else if (rand < 0.2)
-           darth.execute("Darth is in half");
+           darth.broadcast("Darth is in half")
        else if (rand < 0.3)
-           darth.execute("I do not resemble a Ferrero Rocher");
+           darth.broadcast("I do not resemble a Ferrero Rocher")
        else if (rand < 0.4)
-           darth.execute("Balenciaga shot first");
+           darth.broadcast("Balenciaga shot first")
        else if (rand < 0.5)
-           darth.execute("hold on a sec, Jar Jar's ordering a Hawaiian");
+           darth.broadcast("Hold on a sec, Jar Jar's ordering a Hawaiian")
        else
-           darth.execute("oi got a power converter");
-       
-       
-       // Leave via a random exit
-       const room = darth.getCurrentRoom();
-       const exits = Object.keys(room.exits);
-       if (exits.length === 0) {
-           // Stuck in a room without exits
-           darth.execute("teleport home");
-       } else {
-           // Pick a random exit
-           const exit = exits[Math.floor(Math.random()*exits.length)];
-           darth.execute("go " + exit);
-       }
+           darth.broadcast("Oi, got a power converter!?")
    }
-});
+})
