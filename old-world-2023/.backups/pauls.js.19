@@ -1,0 +1,27 @@
+room("broom cupboard", {
+  description: "It's dusty and dark, but relaxingly quiet.",
+  exits: {
+    west: "home2"
+  }
+});
+
+item("broom cupboard", "map", {
+    description: "A magical map. It smarkles with magic",
+    short: 'map',
+    respwnTime: 3600,
+});
+
+
+const readMap = function(rest,player,item,game){
+    var room = player.getCurrentRoom();
+    player.write("you read the map");
+    for(var n in game.rooms){
+        player.write(n);
+        player.write(typeof game.rooms[n]);
+    }
+};
+
+
+itemCommand("read", "map", "peer at the map", readMap);
+itemCommand("use", "map", "peer at the map", readMap);
+

@@ -1,0 +1,14 @@
+const parrot = character('Parrot', {
+    location: 'home',
+    description: 'It a birb'
+});
+
+const parrotify = (text, player, game) => {
+    if (player.name !== 'Parrot') {
+        parrot.execute(`shout BWAAAK! ${text} BWAAAK!`);
+    }
+};
+
+handler('command:say', parrotify);
+handler('command:tell', parrotify);
+handler('command:shout', parrotify);

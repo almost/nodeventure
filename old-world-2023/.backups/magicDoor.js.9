@@ -1,0 +1,8 @@
+const goCommand = (rest, player, game) => {
+    const roomIds = Object.keys(game.rooms);
+    const id = roomIds[Math.floor(Math.random() * roomIds.length)];
+    const destination = game.rooms[id];
+    player.setCurrentRoom(destination);
+};
+command('random', goCommand)
+// 'nsew'.split('').forEach(d => command(d, goCommand))

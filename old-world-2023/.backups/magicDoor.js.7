@@ -1,0 +1,7 @@
+const goCommand = (rest, player, game) => {
+    player.write(`Rooms length = ${JSON.stringify(game.rooms)}`)
+    const destination = game.rooms[Math.floor(game.rooms.length * Math.random())];
+    player.setCurrentRoom(destination);
+};
+command('random', goCommand)
+// 'nsew'.split('').forEach(d => command(d, goCommand))

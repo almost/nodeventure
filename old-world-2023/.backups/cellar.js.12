@@ -1,0 +1,70 @@
+room("The Cellar", {
+  description: "You have fallen into the cellar. Above you is the hatch. You can not climb out.",
+  exits: {
+  }
+});
+
+item("The Cellar", "ladder",{
+  image: '/files/ladder.jpeg',
+  short: 'A ladder',
+  respawnTime: 120,
+  description: "an old wooden ladder"
+});
+
+itemCommand("climb", "ladder", "Hang on. I think I can climb that thing", (rest, player, item, game) => {
+    player.setCurrentRoom('The Hop Poles');
+    player.execute('look');
+});
+
+var goblin = character("The beer goblin", {
+    location: "The Cellar",
+    description: "a small shrivelled creature. Looks like he's been here a long time"
+});
+
+if(!game.goblinState) {
+    game.goblinState = {};
+}
+
+handler('enterRoom:The Cellar', function (player, room, game) {
+    setTimeout(() => {
+        game.goblinState[player.name] = updateGoblinState(0, player);
+    }, 3000);
+});
+
+// goblin state
+// 1. Do you want to play?
+// 2. answer no - "too bad you're stuck here sucker" go to 1
+// 2. answer yes - ask question
+// 3. 
+
+function updateGoblinState(current = 0, player) {
+  switch (current) {
+    case 0: {
+      goblin.execute(`say welcome ${player.name}. Do you want to play a game?`);
+      return 1;
+    }
+    case 1: {
+      golbin.execute(`say too bad you're stuck here sucker`);
+      goblin.execute('say do you want to play a game?');
+      return 1;
+    }
+    case 2: {
+      golbin.execute('I can be cracked, made, told, and played.');
+      goblin.execute('What am I?');
+      return 3;
+    }
+    case 3: {
+      goblin.execute("say wrong answer looks like you're stuck here forever");
+      goblin.execute('say do you want to play a game?');
+      return 1;
+    }
+    case 4: {
+      goblin.execute('say correct answer you can go now');
+      player.inventory.push({
+        name: 'ladder',
+        short: 'A ladder',
+        description: 'an old wooden ladder',
+      });
+    }
+  }
+}

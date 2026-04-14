@@ -1,0 +1,26 @@
+room("tradingFloor", {
+    description: "the trading floor",
+    exits : {west: "home"}
+});
+
+room.broadcast("Welcome to the trading room, please trade responsibly");
+
+item("tradingFloor", "computer", {
+    image: '/files/chair.jpg',
+    description: "This is a computer",
+    short: 'a computer to trade on',
+    respwnTime: 120,
+});
+
+const remi = character("Remi", {
+    location: "pub",
+    description: "A short man with a cigarette in his mouth and a Pravha in his hand."
+});
+
+room("Beer Garden", {
+  description: "The beer garden is almost empty bar a small group of NERDS. One of the NEEEERDS is complaining about the price of a delicious IPA.",
+  exits: {
+    "backdoor": "The Hop Poles" 
+  }
+});
+

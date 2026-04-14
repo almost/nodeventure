@@ -1,0 +1,7 @@
+item("home", "red button", {
+    description: "A big red button"
+});
+
+itemCommand("press", "red button", (rest, player, item, game) => {
+    player.display("eval(alert('Test'))");
+});

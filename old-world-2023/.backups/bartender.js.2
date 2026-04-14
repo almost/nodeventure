@@ -1,0 +1,13 @@
+
+
+const bartender = character("bartender", {
+    location: "The Hop Poles",
+    description: ""
+});
+
+handler("playerTalk", (player, message) => {
+    if (player.getCurrentRoom() === towncrier.getCurrentRoom() && player !== bartender) {
+        
+    }
+});
+

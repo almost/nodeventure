@@ -1,0 +1,24 @@
+room("olly", {
+  description: "This is the place of ollynesssssssss",
+  exits: {
+    south: "home2",
+    sky: "broom cupboard",
+  }
+});
+
+
+item("olly", "banna",{
+  image: '/files/banna.jpg',
+  short: 'a yellow thing',
+  respawnTime: 120,
+  description: "Is it a fruit or is it a seed?? Or something completely differnet...? #factcheck"
+});
+
+
+
+item("olly", "chair",{
+  image: '/files/table.jpeg',
+  short: 'the chair',
+  respawnTime: 120,
+  description: "monkey chairs"
+});

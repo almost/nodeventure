@@ -1,0 +1,12 @@
+command('find', 'find out where an item is is: e.g. "find map', (rest, player, game) => {
+    console.log('finding!');
+    const name = rest.trim().toLowerCase();
+    _.values(game.rooms).forEach(r => {
+        const item = _.find(r.items, item => 
+            (item.name && item.name.toLowerCase() === name) || (item.short && item.short.toLowerCase() === name)
+        );
+        if (item) {
+            player.write(`${item.name} is in ${r.id}`)   
+        }
+    });
+})

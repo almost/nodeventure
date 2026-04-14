@@ -1,0 +1,21 @@
+room("middleStreet" {
+  description: "The middlest of all the streets. Do NOT leave your bikes here overnight, or they will get pinchy pinched.",
+  exits: {
+    pub: "pub"
+  }
+})
+
+room("pub", {
+  description: "You are in a busy pub in the lanes. There's beer everywhere. Through the rear exit you can see a small crowd of nerds sat at a table.",
+  exits: {
+    frontDoor: "middleStreet",
+    rearDoor: "beerGarden"
+  }
+});
+
+room("beerGarden", {
+  description: "",
+  exits: {
+    rearDoor: "pub" 
+  }
+});

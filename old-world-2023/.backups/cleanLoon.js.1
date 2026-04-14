@@ -1,0 +1,10 @@
+command('deleteRoom', (rest, player, game) => {
+   const rooms = game.rooms
+   const pattern = rest.trim()
+   
+   Object.keys(rooms).forEach(key => {
+       if (key.indexOf(pattern) >= 0) {
+           delete game.rooms[key]
+       }
+   });
+});

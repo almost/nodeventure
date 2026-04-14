@@ -1,0 +1,21 @@
+room("Middle Street", {
+  description: "The middlest of all the streets. Do NOT leave your bikes here overnight, or they will get pinchy pinched.",
+  exits: {
+    "The Hop Poles": "The Hop Poles"
+  }
+})
+
+room("The Hop Poles", {
+  description: "You are in a busy pub in the lanes. There's beer everywhere. Through the rear exit you can see a small crowd of nerds sat at a table.",
+  exits: {
+    "Front Door": "Middle Street",
+    "Back Door": "Beer Garden"
+  }
+});
+
+room("Beer Garden", {
+  description: "The beer garden is almost empty bar a small group of NERDS. One of the NEEEERDS is complaining about the price of a delicious IPA.",
+  exits: {
+    "Back Door": "The Hop Poles" 
+  }
+});

@@ -1,0 +1,18 @@
+
+
+const bartender = character("bartender", {
+    location: "The Hop Poles",
+    description: ""
+});
+
+//We can handle playerTalk to have a character respond to a player
+handler("playerTalk", (player, message) => {
+    // First we check that the player is in the same room as the town crier and the "player" is not the town crier
+    if (player.getCurrentRoom() === towncrier.getCurrentRoom() && player !== towncrier) {
+        // Did they mention the skiff?
+        if (/the skiff/i.exec(message)) {
+            towncrier.execute("say The Skiff is a great co-working space if you need somewhere to work away from home. Come check us out at theskiff.org")
+        }
+    }
+});
+

@@ -1,0 +1,19 @@
+room('semsroom', {
+  description: "Welcome to Sem's room. This is the place to get some space...",
+  exits: {
+    north: 'garden',
+    west: 'basment',
+    east: 'river',
+    south: 'kitchen',
+    down: 'dungeon669'
+  },
+  image: 'myroom.jpg'
+});
+
+item('semsroom', 'secretWeapon', {
+  image: 'http://example.com/cat.jpg',
+  respawnTime: 120,
+  short: 'a jetpack',
+  description: 'An awesome jetpack for flying around.'
+});
+

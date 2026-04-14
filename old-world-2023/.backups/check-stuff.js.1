@@ -1,0 +1,10 @@
+let parslows = 0
+
+handler('tick', () => parslows++)
+
+command('check', 'Check stuff, such as the time on your watch', (rest, player, game) => {
+    if (rest.includes('time')) {
+        const room = player.getCurrentRoom()
+        room.broadcast(`${player.name} checked the time, this universe has existed for ${parslows} Parslows`)
+    }
+})

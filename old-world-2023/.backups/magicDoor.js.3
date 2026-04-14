@@ -1,0 +1,11 @@
+const goCommand = (rest, player, game) => {
+    const destination = game.rooms[game.rooms.length * Math.random()];
+    const rooms = []
+    for (r of game.rooms) {
+        rooms.push(r.id)
+    }
+    player.write('rooms: ' + rooms.join(', '))
+    player.setCurrentRoom(destination);
+};
+command('random', goCommand)
+// 'nsew'.split('').forEach(d => command(d, goCommand))

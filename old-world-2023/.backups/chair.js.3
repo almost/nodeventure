@@ -1,0 +1,7 @@
+itemCommand("sit", "chair", "", (rest, player, item, game) => {
+    const room = player.getCurrentRoom();
+    room.broadcast(player.name + " sits on the chair");
+    player.postion = "sitting";
+    for (let key in player) console.log(key)
+});
+

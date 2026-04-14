@@ -1,0 +1,37 @@
+room("home", {
+  description: "You are in the lobby of Spaces in Brighton. Tonight is Async night and we're building a game!",
+  exits: {
+    south: "home2",
+  }
+});
+
+room("home2", {
+  description: "You are in the southern part of the lobby of Spaces in Brighton, there are some booths here for meetings.",
+  exits: {
+    north: "home",
+  }
+});
+
+const towncrier = character("The town crier", {
+    location: "home",
+    description: "looking nothing like a town and isn't crying."
+})
+
+// Let's make the town crier do stuff
+handler("tick", () => {
+   // A tick happens once a second, but we only want to do something every 30 seconds or so
+   if (Math.random() < 0.03) {
+       towncrier.execute("say Hear yee hear yee! This game needs some more things added to it! (hint: that's your job)");
+       // Leave via a random exit
+       const room = towncrier.getCurrentRoom();
+       const exits = Object.keys(room.exitss);
+       if (exits.length === 0) {
+           // stuck in a room without exits
+           towncrier.execute("teleport home");
+       } else {
+           // Pick a random exit
+           const exit = exits[Math.floor(Math.random()*exits.length)];
+           towncrier.execute("go " + exit);
+       }
+   }
+});
