@@ -1,70 +1,74 @@
 import { EventEmitter } from 'node:events';
-import _ from 'underscore';
 
+/* WorldModule is the host-side handle for one world JS file.
+ *
+ * It is a normal Node EventEmitter that the loader forwards game events to;
+ * the guest module subscribes via `handler(...)` / `event(...)` which register
+ * listeners on this emitter. The methods exposed by `globals()` are the API
+ * surface installed as guest globals by the Sandbox — they're plain host
+ * functions, never run inside the isolate.
+ */
 export class WorldModule extends EventEmitter {
   constructor(game, reportError) {
     super();
-    this._listenersAdded = [];
-    // Make all regular globals available within the modules (is this a
-    // good idea?)
-    Object.assign(this, global);
-    // Inject underscore for the world modules to use
-    this._ = _;
     this.game = game;
     this.reportError = reportError;
+  }
 
-    // Make available world creation commands
-    this.command = game.createCommand.bind(game);
-    this.room = game.createRoom.bind(game);
-    this.item = game.createItem.bind(game);
-    this.spawn = game.createSpawn.bind(game);
+  globals() {
+    const game = this.game;
+    const reportError = this.reportError;
+    const self = this;
 
-    // Create a command that expects an item name following it. Will
-    // automatically check that the item is present.
-    this.itemCommand = (command, item, description, fn) => {
-      game.createCommand(`${command} ${item}`, description, fn);
-    };
-
-    this.character = (name, properties) => {
-      const player = game.createPlayer(name);
-      properties.npc = true;
-      Object.assign(player, properties);
-      return player;
-    };
-
-    this.setTimeout = (fn, time) => {
-      setTimeout(() => {
-        try {
-          fn();
-        } catch (e) {
-          game.broadcast('Error running timeout');
-          game.broadcast(e);
-          game.broadcast(e.stack);
-          console.trace();
-        }
-      }, time);
-    };
-
-    this.handler = (event, fn) => {
+    const handler = (event, fn) => {
       const wrapped = (...args) => {
         try {
-          fn.apply(this, args);
+          fn.apply(undefined, args);
         } catch (e) {
-          reportError(e.stack);
+          reportError(e.stack || String(e));
           game.broadcast(`Oh dear there was an error handling the ${event} event!`);
           console.log(`Error running handler for event: ${event}`);
-          console.log(e.stack);
-          console.trace();
-          this.removeListener(event, wrapped);
+          console.log(e.stack || e);
+          self.removeListener(event, wrapped);
         }
       };
-      this.on(event, wrapped);
+      self.on(event, wrapped);
     };
 
-    this.event = (eventName, subjectId, eventHandler) => {
-      this.handler(`${eventName}:${subjectId}`, eventHandler);
-    };
+    return {
+      command: game.createCommand.bind(game),
+      room: game.createRoom.bind(game),
+      item: game.createItem.bind(game),
+      spawn: game.createSpawn.bind(game),
 
-    this.preventDefault = () => game.preventDefault();
+      itemCommand: (command, item, description, fn) => {
+        game.createCommand(`${command} ${item}`, description, fn);
+      },
+
+      character: (name, properties) => {
+        const player = game.createPlayer(name);
+        if (properties) {
+          properties.npc = true;
+          Object.assign(player, properties);
+        }
+        return player;
+      },
+
+      setTimeout: (fn, time) => {
+        setTimeout(() => {
+          try {
+            fn();
+          } catch (e) {
+            game.broadcast('Error running timeout');
+            game.broadcast(e.stack || String(e));
+          }
+        }, time);
+      },
+
+      handler,
+      event: (eventName, subjectId, eventHandler) => handler(`${eventName}:${subjectId}`, eventHandler),
+
+      preventDefault: () => game.preventDefault(),
+    };
   }
 }

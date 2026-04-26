@@ -14,10 +14,10 @@
   "type": "module",
   "dependencies": {
     "express": "*",
+    "isolated-vm": "^6.1.2",
     "nodemon": "^3.1.14",
     "socket.io": "*",
-    "underscore": "*",
-    "vm2": "*"
+    "underscore": "*"
   },
   "engines": {
     "node": "*"

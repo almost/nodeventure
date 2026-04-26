@@ -14,11 +14,9 @@
  */
 import fs from 'node:fs';
 import util from 'node:util';
-import vm2 from 'vm2';
 import { Game } from './game.js';
 import { WorldModule } from './world.js';
-
-const { VM } = vm2;
+import { Sandbox } from './sandbox.js';
 
 export class Loader {
   constructor(path) {
@@ -28,6 +26,7 @@ export class Loader {
     this.dataPath = `${path}/data`;
     this.modules = {};
     this.dataFiles = {};
+    this.sandbox = new Sandbox();
 
     if (!fs.existsSync(this.codePath)) {
       fs.mkdirSync(this.codePath, { recursive: true });
@@ -98,31 +97,34 @@ export class Loader {
           const logPath = `${this.codePath}/.logs/${file}`;
           const errorPath = `${this.codePath}/.errors/${file}`;
 
-          module.console = {
-            log: (...args) => {
-              console.log(`[${file}] `, ...args);
-              fs.appendFileSync(logPath, args.map((x) => util.inspect(x)).join(' ') + '\n');
-            },
+          const log = (...args) => {
+            console.log(`[${file}] `, ...args);
+            fs.appendFileSync(logPath, args.map((x) => util.inspect(x)).join(' ') + '\n');
           };
-          module.require = () => {
-            throw new Error('No no no no');
-          };
+          // Game.createRoom looks up `_loadingModule.console.log` to surface
+          // missing-inverse-exit warnings while a module loads.
+          module.console = { log };
 
-          const vm = new VM({ sandbox: module });
           fs.writeFileSync(logPath, '');
 
           try {
             console.log(`Loading ${file}`);
             this.game._loadingModule = module;
-            vm.run(code, { filename: fullPath });
+            this.sandbox.runModule({
+              code,
+              filename: fullPath,
+              globals: module.globals(),
+              consoleLog: log,
+            });
             this.game._loadingModule = null;
             if (fs.existsSync(errorPath)) {
               fs.unlinkSync(errorPath);
             }
           } catch (e) {
+            this.game._loadingModule = null;
             console.trace(`Error running world module: ${e}`);
             this.game.broadcast(`Oh no some one broke ${file}!`);
-            fs.writeFileSync(errorPath, e.stack);
+            fs.writeFileSync(errorPath, e.stack || String(e));
           }
         });
       }

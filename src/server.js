@@ -11,12 +11,20 @@ const server = http.createServer(app);
 const io = new Server(server);
 const port = parseInt(process.env.PORT || '8989', 10);
 const WORLD_DIR = './world';
-const NAME_RE = /^[a-zA-Z0-9._-]+$/;
+// Filenames must start with an alphanumeric/underscore/hyphen (no leading dot,
+// so no `.gitignore`/`..`) and contain only the same set plus dots. The
+// extension is checked per-folder by `isValidName`.
+const NAME_RE = /^[a-zA-Z0-9_-][a-zA-Z0-9._-]*$/;
+const MAX_UPLOAD_BYTES = 128 * 1024;
 
 const loader = new Loader(WORLD_DIR);
 const { game } = loader;
 
-const isValidName = (name) => typeof name === 'string' && NAME_RE.test(name);
+const isValidName = (name, folder) => {
+  if (typeof name !== 'string' || !NAME_RE.test(name)) return false;
+  if (folder && !name.toLowerCase().endsWith(folder.extension)) return false;
+  return true;
+};
 
 // Two parallel folders under world/: `code` for JS modules and `data` for JSON
 // overlays. Both are exposed through the same /files/:folder/... endpoints.
@@ -186,7 +194,7 @@ app.get('/files/:folder/:filename', (req, res) => {
   const folder = getFolder(req.params.folder);
   if (!folder) { res.status(404).end('Unknown folder'); return; }
   const name = req.params.filename;
-  if (!isValidName(name)) {
+  if (!isValidName(name, folder)) {
     res.status(404).end("I don't like the name");
     return;
   }
@@ -202,50 +210,45 @@ app.get('/files/:folder/:filename', (req, res) => {
   res.end(fs.readFileSync(path));
 });
 
-app.put('/files/:folder/:filename', (req, res) => {
+app.put('/files/:folder/:filename', express.raw({ type: '*/*', limit: MAX_UPLOAD_BYTES }), (req, res) => {
   const folder = getFolder(req.params.folder);
   if (!folder) { res.status(404).end('Unknown folder'); return; }
   const name = req.params.filename;
-  if (!isValidName(name)) {
+  if (!isValidName(name, folder)) {
     res.status(404).end("I don't like the name");
     return;
   }
-  let buffer = Buffer.alloc(0);
-  req.on('data', (chunk) => {
-    buffer = Buffer.concat([buffer, Buffer.from(chunk)]);
-  });
-  req.on('end', () => {
-    if (folder.validate) {
-      try {
-        folder.validate(buffer);
-      } catch (e) {
-        res.status(400).end(`Invalid file: ${e.message}`);
-        return;
-      }
+  const buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+  if (folder.validate) {
+    try {
+      folder.validate(buffer);
+    } catch (e) {
+      res.status(400).end(`Invalid file: ${e.message}`);
+      return;
     }
-    const path = `${folder.dir}/${name}`;
-    let parsed = null;
-    if (folder === FOLDERS.data) {
-      try { parsed = JSON.parse(buffer.toString('utf8')); } catch (e) { /* already validated */ }
-    }
-    if (folder === FOLDERS.data && !fs.existsSync(path)) {
-      captureCodeState(folder, name, parsed);
-    }
-    backupFile(folder, name);
-    fs.writeFileSync(path, buffer);
-    if (folder === FOLDERS.data && parsed) {
-      ensureInverseExits(folder, parsed);
-    }
-    loader.update();
-    res.status(201).end('');
-  });
+  }
+  const path = `${folder.dir}/${name}`;
+  let parsed = null;
+  if (folder === FOLDERS.data) {
+    try { parsed = JSON.parse(buffer.toString('utf8')); } catch (e) { /* already validated */ }
+  }
+  if (folder === FOLDERS.data && !fs.existsSync(path)) {
+    captureCodeState(folder, name, parsed);
+  }
+  backupFile(folder, name);
+  fs.writeFileSync(path, buffer);
+  if (folder === FOLDERS.data && parsed) {
+    ensureInverseExits(folder, parsed);
+  }
+  loader.update();
+  res.status(201).end('');
 });
 
 app.delete('/files/:folder/:filename', (req, res) => {
   const folder = getFolder(req.params.folder);
   if (!folder) { res.status(404).end('Unknown folder'); return; }
   const name = req.params.filename;
-  if (!isValidName(name)) {
+  if (!isValidName(name, folder)) {
     res.status(404).end("I don't like the name");
     return;
   }
@@ -264,7 +267,7 @@ app.get('/history/:folder/:filename', (req, res) => {
   const folder = getFolder(req.params.folder);
   if (!folder) { res.status(404).end('Unknown folder'); return; }
   const name = req.params.filename;
-  if (!isValidName(name)) {
+  if (!isValidName(name, folder)) {
     res.status(404).end("I don't like the name");
     return;
   }
@@ -282,7 +285,7 @@ app.get('/logs/:folder/:filename', (req, res) => {
   const folder = getFolder(req.params.folder);
   if (!folder) { res.status(404).end('Unknown folder'); return; }
   const name = req.params.filename;
-  if (!isValidName(name)) {
+  if (!isValidName(name, folder)) {
     res.status(404).end("I don't like the name");
     return;
   }
