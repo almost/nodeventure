@@ -1,6 +1,7 @@
 {
   "type": "room",
-  "id": "another",
+  "id": "room2",
+  "description": "A new room.",
   "exits": {
     "north": "home"
   }

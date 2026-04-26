@@ -34,6 +34,25 @@ export class Display {
   }
 }
 
+// Match an item against a user-supplied query. Items are addressable by id
+// (canonical), name (display, what users normally type), or short.
+function matchItem(item, query) {
+  const lower = query.toLowerCase();
+  return (
+    (item.id && item.id.toLowerCase() === lower) ||
+    (item.name && item.name.toLowerCase() === lower) ||
+    (item.short && item.short.toLowerCase() === lower)
+  );
+}
+
+export class Item {
+  constructor(game, id) {
+    this.game = game;
+    this.id = id;
+    this.name = id;
+  }
+}
+
 export class Room {
   constructor(game, id) {
     this.game = game;
@@ -59,12 +78,8 @@ export class Room {
     return this.getPlayers().find((p) => p.name.toLowerCase() === lower);
   }
 
-  getItem(name) {
-    const lower = name.toLowerCase();
-    return this.items.find((item) =>
-      (item.name && item.name.toLowerCase() === lower) ||
-      (item.short && item.short.toLowerCase() === lower)
-    );
+  getItem(query) {
+    return this.items.find((item) => matchItem(item, query));
   }
 
   // Send a message to all players in the room. Optionally exclude one player
@@ -104,12 +119,8 @@ export class Player extends EventEmitter {
     this.getCurrentRoom().broadcast(message, this);
   }
 
-  getItem(name) {
-    const lower = name.toLowerCase();
-    return this.inventory.find((item) =>
-      (item.name && item.name.toLowerCase() === lower) ||
-      (item.short && item.short.toLowerCase() === lower)
-    );
+  getItem(query) {
+    return this.inventory.find((item) => matchItem(item, query));
   }
 
   getCurrentRoom() {
@@ -157,6 +168,11 @@ export class Game extends EventEmitter {
   constructor() {
     super();
     this.rooms = {};
+    this.items = {};
+    // Spawn rules keyed by `${roomId}:${itemId}`. Each entry has roomId,
+    // itemId, spawnSeconds, lastSpawn, and a `_codeProps` snapshot used by
+    // the loader to re-apply data overlays cleanly.
+    this.spawns = {};
     this.players = {};
     this.commands = {};
     this._allowDefault = true;
@@ -211,6 +227,32 @@ export class Game extends EventEmitter {
     }
 
     return room;
+  }
+
+  // Create or update an item definition. Items are first-class entities
+  // identified by id; `name` (defaults to id) is what users see and type.
+  createItem(id, options = {}) {
+    const item = this.items[id] = this.items[id] || new Item(this, id);
+    item._codeProps = { ...options };
+    Object.assign(item, options);
+    item.id = id;
+    if (!item.name) item.name = id;
+    return item;
+  }
+
+  // Register a spawn rule that periodically creates a copy of the item in the
+  // room. spawnSeconds defaults to 60.
+  createSpawn(roomId, itemId, options = {}) {
+    const key = `${roomId}:${itemId}`;
+    const existing = this.spawns[key];
+    const spawn = this.spawns[key] = {
+      roomId,
+      itemId,
+      spawnSeconds: options.spawnSeconds || 60,
+      lastSpawn: existing ? existing.lastSpawn : 0,
+      _codeProps: { ...options },
+    };
+    return spawn;
   }
 
   createCommand(command, description, fun) {

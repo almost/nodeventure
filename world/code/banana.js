@@ -1,0 +1,4 @@
+itemCommand("eat", "banana", "eat the banana", function (rest, player, item, game) {
+    player.write('You take a bite of the banana');
+    player.getCurrentRoom().broadcast(player.name + " takes a bite out of the banana", player);
+});

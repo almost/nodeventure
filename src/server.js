@@ -82,27 +82,42 @@ function ensureInverseExits(folder, sourceContent) {
     targetData.exits = targetData.exits || {};
     if (targetData.exits[inverse]) continue;
     targetData.exits[inverse] = sourceId;
-    captureRoomCodeState(folder, targetName);
+    captureCodeState(folder, targetName, targetData);
     backupFile(folder, targetName);
     fs.writeFileSync(targetPath, JSON.stringify(targetData, null, 2));
   }
 }
 
-// First time a code-defined room gets a data overlay, snapshot its code-only
+// First time a code-defined entity gets a data overlay, snapshot its code-only
 // state into the backup history so the user can revert back to "no overlay".
-function captureRoomCodeState(folder, name) {
+// Handles both room and item overlays based on the parsed content's `type`.
+function captureCodeState(folder, name, parsed) {
   const backupDir = `${folder.dir}/.backups`;
-  // Only when there's no history yet — we don't want to keep re-snapshotting.
   if (fs.existsSync(`${backupDir}/${name}.1`)) return;
-  const id = name.replace(/\.json$/i, '');
-  const room = game.rooms[id];
-  if (!room || !room._codeProps) return;
-  const codeState = { type: 'room', id };
-  if ('description' in room._codeProps) {
-    codeState.description = room._codeProps.description;
+  const id = (parsed && parsed.id) || name.replace(/\.json$/i, '');
+  const type = parsed && parsed.type;
+
+  let codeState = null;
+  if (type === 'room') {
+    const room = game.rooms[id];
+    if (!room || !room._codeProps) return;
+    codeState = { type: 'room', id };
+    if ('description' in room._codeProps) {
+      codeState.description = room._codeProps.description;
+    }
+    const exits = { ...(room._codeProps.exits || {}) };
+    if (Object.keys(exits).length) codeState.exits = exits;
+  } else if (type === 'item') {
+    const item = game.items[id];
+    if (!item || !item._codeProps) return;
+    codeState = { type: 'item', id };
+    for (const [key, value] of Object.entries(item._codeProps)) {
+      if (key === 'type' || key === 'id') continue;
+      codeState[key] = value;
+    }
   }
-  const exits = { ...(room._codeProps.exits || {}) };
-  if (Object.keys(exits).length) codeState.exits = exits;
+
+  if (!codeState) return;
   if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir);
   fs.writeFileSync(`${backupDir}/${name}.1`, JSON.stringify(codeState, null, 2));
 }
@@ -209,15 +224,17 @@ app.put('/files/:folder/:filename', (req, res) => {
       }
     }
     const path = `${folder.dir}/${name}`;
+    let parsed = null;
+    if (folder === FOLDERS.data) {
+      try { parsed = JSON.parse(buffer.toString('utf8')); } catch (e) { /* already validated */ }
+    }
     if (folder === FOLDERS.data && !fs.existsSync(path)) {
-      captureRoomCodeState(folder, name);
+      captureCodeState(folder, name, parsed);
     }
     backupFile(folder, name);
     fs.writeFileSync(path, buffer);
-    if (folder === FOLDERS.data) {
-      try {
-        ensureInverseExits(folder, JSON.parse(buffer.toString('utf8')));
-      } catch (e) { /* validate already ran, ignore */ }
+    if (folder === FOLDERS.data && parsed) {
+      ensureInverseExits(folder, parsed);
     }
     loader.update();
     res.status(201).end('');
@@ -298,11 +315,46 @@ app.get('/rooms', (req, res) => {
       codeDescription: 'description' in code ? code.description : null,
       exits: { ...r.exits },
       codeExits: { ...(code.exits || {}) },
+      items: (r.items || []).map((it) => ({ name: it.name, short: it.short })),
       hasData: fs.existsSync(`${FOLDERS.data.dir}/${r.id}.json`),
     };
   });
   rooms.sort((a, b) => a.id.localeCompare(b.id));
   res.end(JSON.stringify(rooms));
+});
+
+// List every item known to the running game (from code or data overlays).
+// `code*` fields expose the JS-provided values so the editor can show what
+// would be in effect without an overlay.
+app.get('/items', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  const items = Object.values(game.items).map((it) => {
+    const code = it._codeProps || {};
+    return {
+      id: it.id,
+      name: it.name,
+      description: it.description,
+      short: it.short,
+      image: it.image,
+      gettable: it.gettable !== false,
+      codeName: 'name' in code ? code.name : null,
+      codeDescription: 'description' in code ? code.description : null,
+      codeShort: 'short' in code ? code.short : null,
+      codeImage: 'image' in code ? code.image : null,
+      codeGettable: 'gettable' in code ? code.gettable : null,
+      hasData: fs.existsSync(`${FOLDERS.data.dir}/${it.id}.json`),
+    };
+  });
+  items.sort((a, b) => a.id.localeCompare(b.id));
+  res.end(JSON.stringify(items));
+});
+
+app.get('/items/', (req, res) => {
+  fs.createReadStream('./client/itemeditor.html').pipe(res);
+});
+
+app.get('/items/:id', (req, res) => {
+  fs.createReadStream('./client/itemeditor.html').pipe(res);
 });
 
 app.get('/rooms/', (req, res) => {

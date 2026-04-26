@@ -4,8 +4,9 @@
 
 const state = {
   rooms: [],          // list from /rooms
+  items: [],          // list from /items
   currentId: null,
-  draft: null,        // { description, exits: [{name, to, source}] }
+  draft: null,        // { description, exits: [{name, to, source}], items: [{itemId, spawnSeconds}] }
   initial: null,      // snapshot used to detect changes
   history: [],
   selectedVersion: 'current',
@@ -22,6 +23,11 @@ async function loadRooms() {
   const res = await fetch('/rooms');
   state.rooms = await res.json();
   renderRoomList();
+}
+
+async function loadItems() {
+  const res = await fetch('/items');
+  state.items = await res.json();
 }
 
 function renderRoomList() {
@@ -91,6 +97,13 @@ async function loadRoomDraft(id, version) {
     });
   }
 
+  const items = Array.isArray(dataContent && dataContent.items)
+    ? dataContent.items.map((it) => ({
+        itemId: it.itemId || '',
+        spawnSeconds: it.spawnSeconds != null ? it.spawnSeconds : 60,
+      }))
+    : [];
+
   state.draft = {
     description: dataContent && 'description' in dataContent
       ? dataContent.description
@@ -98,6 +111,7 @@ async function loadRoomDraft(id, version) {
     descriptionFromData: !!(dataContent && 'description' in dataContent),
     exits,
     codeExits,
+    items,
   };
   state.initial = JSON.stringify(state.draft);
 }
@@ -124,6 +138,9 @@ function renderEditor() {
     <label>Exits</label>
     <div id="exits"></div>
     <button id="add-exit" style="margin-top:0.5rem">+ Add exit</button>
+    <label>Items</label>
+    <div id="items"></div>
+    <button id="add-item" style="margin-top:0.5rem">+ Add item</button>
     <datalist id="exit-directions">
       ${DIRECTIONS.map((d) => `<option value="${d}"></option>`).join('')}
     </datalist>
@@ -141,6 +158,7 @@ function renderEditor() {
   });
 
   renderExits();
+  renderItems();
   renderHistory();
 
   $('#save').addEventListener('click', save);
@@ -148,6 +166,11 @@ function renderEditor() {
   $('#add-exit').addEventListener('click', () => {
     state.draft.exits.push({ name: '', to: '', source: 'data' });
     renderExits();
+    renderRoomList();
+  });
+  $('#add-item').addEventListener('click', () => {
+    state.draft.items.push({ itemId: '', spawnSeconds: 60 });
+    renderItems();
     renderRoomList();
   });
 }
@@ -189,6 +212,58 @@ function renderExits() {
     row.querySelector('button').addEventListener('click', () => {
       state.draft.exits.splice(idx, 1);
       renderExits();
+      renderRoomList();
+    });
+    container.appendChild(row);
+  });
+}
+
+function renderItems() {
+  const container = $('#items');
+  container.innerHTML = '';
+  const itemOptions = state.items.map((it) => it.id);
+  if (!itemOptions.length) {
+    const note = document.createElement('div');
+    note.className = 'empty';
+    note.style.textAlign = 'left';
+    note.style.padding = '0.5rem 0';
+    note.textContent = 'No items defined yet. Create one as a data file: { "type": "item", "id": "...", "name": "...", "description": "..." }';
+    container.appendChild(note);
+  }
+  state.draft.items.forEach((entry, idx) => {
+    const row = document.createElement('div');
+    row.className = 'exit-row';
+    const options = new Set(itemOptions);
+    if (entry.itemId) options.add(entry.itemId);
+    const optionsHtml = ['<option value="">(pick an item)</option>']
+      .concat([...options].sort().map((id) => {
+        const def = state.items.find((it) => it.id === id);
+        const label = def && def.name && def.name !== id ? `${id} (${def.name})` : id;
+        return `<option value="${escapeAttr(id)}"${id === entry.itemId ? ' selected' : ''}>${escapeAttr(label)}${
+          itemOptions.includes(id) ? '' : ' (missing)'
+        }</option>`;
+      }))
+      .join('');
+    row.innerHTML = `
+      <select class="item">${optionsHtml}</select>
+      <span class="source">spawns every</span>
+      <input type="number" class="freq" min="1" step="1" value="${escapeAttr(entry.spawnSeconds)}">
+      <span class="source">sec</span>
+      <button type="button">×</button>
+    `;
+    const itemSelect = row.querySelector('select.item');
+    const freqInput = row.querySelector('input.freq');
+    itemSelect.addEventListener('change', (e) => {
+      entry.itemId = e.target.value;
+      renderRoomList();
+    });
+    freqInput.addEventListener('input', (e) => {
+      entry.spawnSeconds = parseInt(e.target.value, 10) || 0;
+      renderRoomList();
+    });
+    row.querySelector('button').addEventListener('click', () => {
+      state.draft.items.splice(idx, 1);
+      renderItems();
       renderRoomList();
     });
     container.appendChild(row);
@@ -238,6 +313,12 @@ function buildOverlay() {
     }
   }
   if (Object.keys(exits).length) overlay.exits = exits;
+
+  const items = state.draft.items
+    .filter((it) => it.itemId)
+    .map((it) => ({ itemId: it.itemId, spawnSeconds: Math.max(1, it.spawnSeconds || 60) }));
+  if (items.length) overlay.items = items;
+
   return overlay;
 }
 
@@ -250,7 +331,7 @@ async function save() {
     alert(`Failed to save (${res.status}): ${await res.text()}`);
     return;
   }
-  await loadRooms();
+  await Promise.all([loadRooms(), loadItems()]);
   await selectRoom(state.currentId);
 }
 
@@ -292,6 +373,6 @@ function loadFromUrl() {
 
 document.addEventListener('DOMContentLoaded', () => {
   $('#new').addEventListener('click', newRoom);
-  loadRooms().then(loadFromUrl);
-  setInterval(loadRooms, 10000);
+  Promise.all([loadRooms(), loadItems()]).then(loadFromUrl);
+  setInterval(() => { loadRooms(); loadItems(); }, 10000);
 });

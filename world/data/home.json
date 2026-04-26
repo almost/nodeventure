@@ -2,6 +2,12 @@
   "type": "room",
   "id": "home",
   "exits": {
-    "south": "another"
-  }
+    "south": "room2"
+  },
+  "items": [
+    {
+      "itemId": "banana",
+      "spawnSeconds": 60
+    }
+  ]
 }

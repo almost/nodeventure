@@ -55,7 +55,7 @@ command('get', 'Pick up an item from the current room.', function (rest, player,
   if (item) {
     if (item.gettable !== false) {
       // We use an event so it can be overridden for different items, see below for the default implementation
-      game.emitEvent("get", item.name, player, item);
+      game.emitEvent("get", item.id, player, item);
     } else {
       player.write("You can not get the " + rest);
     }
@@ -69,12 +69,10 @@ command('take', "Alias for 'get'", function(rest, player, game) {
 });
 
 command('drop', 'Leave an item from your inventory in the current room.', function (itemName, player, game) {
-  var item = _.find(player.inventory, function (it) {
-    return itemName === it.name || itemName === it.short;
-  });
+  var item = player.getItem(itemName);
   if (item) {
     // We use an event so it can be overridden for different items, see below for the default implementation
-    game.emitEvent("drop", itemName, player, item);
+    game.emitEvent("drop", item.id, player, item);
   } else {
     player.write("The " + itemName + " is not in your inventory.");
   }

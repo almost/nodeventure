@@ -1,4 +1,4 @@
-const editor = ace.edit("editor");
+const editor = ace.edit("ace");
 editor.setTheme("ace/theme/monokai");
 editor.session.setMode("ace/mode/javascript");
 
@@ -145,7 +145,7 @@ async function save() {
     currentFilename = prompt("Filename?");
     sessions[currentFilename] = editor.session;
   }
-  const res = await fetch("/files/" + currentFilename, {method: "PUT", body: editor.session.getValue()});
+  const res = await fetch("/files/code/" + currentFilename, {method: "PUT", body: editor.session.getValue()});
   if (res.status == 201) {
     alert("Saved")
     changed[currentFilename] = false;
@@ -165,7 +165,7 @@ async function revert() {
 
 async function deleteFile() {
   if (confirm("DELETE the current file?")) {
-    const res = await fetch("/files/" + currentFilename, {method: "DELETE"});
+    const res = await fetch("/files/code/" + currentFilename, {method: "DELETE"});
     if (res.status == 201) {
       alert("DELETED");
       changed[currentFilename] = true;

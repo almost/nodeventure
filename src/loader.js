@@ -51,6 +51,29 @@ export class Loader {
         module.emit(event, ...args);
       }
     });
+
+    this.game.on('tick', () => this.processSpawns());
+  }
+
+  // Run on every game tick. Walks every spawn rule (from code or data) and
+  // drops a fresh copy of the referenced item into the target room when its
+  // cooldown has elapsed and the room doesn't already contain that item.
+  processSpawns() {
+    const now = Date.now() / 1000;
+    for (const spawn of Object.values(this.game.spawns)) {
+      if (now - spawn.lastSpawn < spawn.spawnSeconds) continue;
+      spawn.lastSpawn = now;
+      const room = this.game.rooms[spawn.roomId];
+      const def = this.game.items[spawn.itemId];
+      if (!room || !def) continue;
+      if (room.getItem(def.id)) continue;
+      // Clone the item def into the room. Strip framework-only fields so the
+      // copy is a plain item the rest of the game can mutate independently.
+      const { _codeProps, game: _g, ...rest } = def;
+      const copy = { ...rest };
+      room.items.push(copy);
+      this.game.emit('spawn', room, copy);
+    }
   }
 
   update() {
@@ -148,21 +171,72 @@ export class Loader {
       }
     }
 
+    // Reset items to their code-provided state. Drop any keys that aren't in
+    // _codeProps (those came from a previous data overlay) and then re-apply.
+    for (const item of Object.values(this.game.items)) {
+      const props = item._codeProps;
+      if (!props) continue;
+      for (const key of Object.keys(item)) {
+        if (key === 'id' || key === '_codeProps' || key === 'game') continue;
+        delete item[key];
+      }
+      Object.assign(item, props);
+      if (!item.name) item.name = item.id;
+    }
+
+    // Reset spawns. Code-defined spawns are rebuilt from _codeProps; data-only
+    // spawns get dropped and re-added below. lastSpawn is preserved so cooldowns
+    // survive overlay reloads.
+    const oldSpawns = this.game.spawns;
+    this.game.spawns = {};
+    for (const [key, spawn] of Object.entries(oldSpawns)) {
+      if (!spawn._codeProps) continue;
+      this.game.spawns[key] = {
+        roomId: spawn.roomId,
+        itemId: spawn.itemId,
+        spawnSeconds: spawn._codeProps.spawnSeconds || 60,
+        lastSpawn: spawn.lastSpawn,
+        _codeProps: spawn._codeProps,
+      };
+    }
+
+    // Apply room overlays (description, exits, item spawns).
     for (const data of Object.values(this.dataFiles)) {
-      const { type, id } = data.content;
-      if (type === 'room') {
-        if (!id) continue;
-        let room = this.game.rooms[id];
-        if (!room) {
-          room = this.game.createRoom(id, {});
-        }
-        if ('description' in data.content) {
-          room.description = data.content.description;
-        }
-        if (data.content.exits) {
-          Object.assign(room.exits, data.content.exits);
+      const c = data.content;
+      if (c.type !== 'room' || !c.id) continue;
+      let room = this.game.rooms[c.id];
+      if (!room) room = this.game.createRoom(c.id, {});
+      if ('description' in c) room.description = c.description;
+      if (c.exits) Object.assign(room.exits, c.exits);
+      if (Array.isArray(c.items)) {
+        for (const entry of c.items) {
+          if (!entry || !entry.itemId) continue;
+          const seconds = Math.max(1, parseInt(entry.spawnSeconds, 10) || 60);
+          const key = `${c.id}:${entry.itemId}`;
+          const previous = oldSpawns[key];
+          this.game.spawns[key] = {
+            roomId: c.id,
+            itemId: entry.itemId,
+            spawnSeconds: seconds,
+            lastSpawn: (previous && previous.lastSpawn) || 0,
+            _codeProps: previous && previous._codeProps,
+          };
         }
       }
+    }
+
+    // Apply item overlays. Anything in the data file (other than type/id)
+    // overrides the code-provided value.
+    for (const data of Object.values(this.dataFiles)) {
+      const c = data.content;
+      if (c.type !== 'item' || !c.id) continue;
+      let item = this.game.items[c.id];
+      if (!item) item = this.game.createItem(c.id, {});
+      for (const [key, value] of Object.entries(c)) {
+        if (key === 'type' || key === 'id') continue;
+        item[key] = value;
+      }
+      if (!item.name) item.name = item.id;
     }
   }
 

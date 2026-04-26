@@ -5,7 +5,6 @@ export class WorldModule extends EventEmitter {
   constructor(game, reportError) {
     super();
     this._listenersAdded = [];
-    this._spawns = {};
     // Make all regular globals available within the modules (is this a
     // good idea?)
     Object.assign(this, global);
@@ -17,6 +16,8 @@ export class WorldModule extends EventEmitter {
     // Make available world creation commands
     this.command = game.createCommand.bind(game);
     this.room = game.createRoom.bind(game);
+    this.item = game.createItem.bind(game);
+    this.spawn = game.createSpawn.bind(game);
 
     // Create a command that expects an item name following it. Will
     // automatically check that the item is present.
@@ -60,38 +61,10 @@ export class WorldModule extends EventEmitter {
       this.on(event, wrapped);
     };
 
-    // Create an item in the given room every respawnTimer seconds if
-    // one of the same name does not already exist.
-    this.item = (room, name, item) => {
-      item.name = name;
-      this._spawns[`${room}:${name}`] = {
-        room,
-        lastSpawn: 0,
-        respawnTimer: item.respawnTimer || 10,
-        item,
-      };
-    };
-
     this.event = (eventName, subjectId, eventHandler) => {
       this.handler(`${eventName}:${subjectId}`, eventHandler);
     };
 
     this.preventDefault = () => game.preventDefault();
-
-    // Set up a tick handler to check for spawns
-    this.handler('tick', () => {
-      for (const spawn of Object.values(this._spawns)) {
-        const t = Date.now() / 1000;
-        const room = game.rooms[spawn.room];
-        if (t - spawn.lastSpawn > spawn.respawnTimer) {
-          spawn.lastSpawn = t;
-          if (room && !room.getItem(spawn.item.name)) {
-            const item = { ...spawn.item };
-            room.items.push(item);
-            game.emit('spawn', room, item);
-          }
-        }
-      }
-    });
   }
 }

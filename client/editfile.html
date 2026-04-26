@@ -1,116 +1,52 @@
 <!doctype html>
-<html class="no-js" lang="">
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="x-ua-compatible" content="ie=edge">
-        <title>Nodeventure Editor</title>
-        <meta name="description" content="">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>Nodeventure - Code</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/css/editor.css">
 
-
-        <script src=" https://cdn.jsdelivr.net/npm/ace-builds@1.19.0/src-min-noconflict/ace.min.js "></script>
-        <link href=" https://cdn.jsdelivr.net/npm/ace-builds@1.19.0/css/ace.min.css " rel="stylesheet">
-
-        <style>
-         html, body, .container {
-             padding: 0;
-             margin: 0;
-             width: 100%;
-             height: 100%;
-         }
-
-         .container {
-             display: flex;
-             flex-direction: row;
-             align-items: stretch;
-         }
-
-         .right {
-             display: flex;
-             align-items: stretch;
-             flex-direction: column;
-             flex-grow: 1;
-             flex-shrink: 1;
-             min-width: 0;
-         }
-
-         #files {
-             width: 10rem;
-             max-width: 20rem;
-             padding: 1rem;
-             display: flex;
-             flex-direction: column;
-             justify-content: space-between;
-             overflow-y: scroll;
-         }
-
-         #editor {
-             flex-grow: 1;
-         }
-
-         #errors, #logs {
-             height: min-content;
-             max-height: 20rem;
-             white-space: pre-wrap;
-             padding: 1rem;
-             overflow: auto;
-             width: 100%;
-             min-width: 0;
-         }
-
-         #toolbar {
-             height: min-content;
-         }
-
-         button {
-             margin: 5px;
-         }
-
-         .error {
-             color: red;
-             font-weight: bold;
-         }
-
-         #uploadfile {
-             margin-bottom: 1rem;
-         }
-        </style>
-
-    </head>
-    <body>
-        <div class="container">
-            <div id="files">
-                <ul>
-                    <li>Loading...</li>
-                </ul>
-                <div>
-                    <form id="uploadfile">
-                        Upload file: <input type="file">
-                    </form>
-                    <div>
-                    <a href="/" target="_blank">Play!</a>
-                    - <a href="/rooms/" target="_blank">Rooms</a>
-                    - <a href="https://github.com/asyncjs/nodeventure/wiki" target="_blank">Documentation</a>
-                    - <a href="https://github.com/asyncjs/nodeventure/" target="_blank">GitHub</a>
-                    </div>
-                </div>
-            </div>
-            <div class="right">
-                <div id="toolbar">
-                    <span id="filename"></span>
-                    <button id="save">Save</button>
-                    <button id="revert">Revert</button>
-                    <button id="delete">Delete</button>
-                    Version: <select id="version">
-                    </select>
-                    <button id="new">New File</button>
-                </div>
-                <div id="editor"></div>
-                <div id="errors"></div>
-                <div id="logs"></div>
-            </div>
+    <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.19.0/src-min-noconflict/ace.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/ace-builds@1.19.0/css/ace.min.css" rel="stylesheet">
+  </head>
+  <body>
+    <nav id="topnav">
+      <span class="brand">Nodeventure</span>
+      <a class="tab" href="/rooms/">Rooms</a>
+      <a class="tab" href="/items/">Items</a>
+      <a class="tab active" href="/edit/">Code</a>
+      <span class="spacer"></span>
+      <span class="ext">
+        <a href="/" target="_blank">Play</a>
+        <a href="https://github.com/asyncjs/nodeventure/wiki" target="_blank">Docs</a>
+        <a href="https://github.com/asyncjs/nodeventure/" target="_blank">GitHub</a>
+      </span>
+    </nav>
+    <div class="container">
+      <div id="files" class="sidebar">
+        <button id="new">+ New File</button>
+        <ul>
+          <li>Loading...</li>
+        </ul>
+        <form id="uploadfile">
+          Upload file: <input type="file">
+        </form>
+      </div>
+      <div class="right ace-host" id="editor">
+        <div id="toolbar">
+          <span id="filename"></span>
+          <select id="version"></select>
+          <button id="save">Save</button>
+          <button id="revert">Revert</button>
+          <button id="delete">Delete</button>
         </div>
+        <div id="ace"></div>
+        <div id="errors"></div>
+        <div id="logs"></div>
+      </div>
+    </div>
 
-        <script src="/js/fileeditor.js"></script>
-    </body>
+    <script src="/js/fileeditor.js"></script>
+  </body>
 </html>
