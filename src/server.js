@@ -5,6 +5,8 @@ import { Server } from 'socket.io';
 import { Loader } from './loader.js';
 
 const app = express();
+// Strict routing so `/rooms` (JSON list) and `/rooms/` (editor HTML) don't collide.
+app.set('strict routing', true);
 const server = http.createServer(app);
 const io = new Server(server);
 const port = parseInt(process.env.PORT || '8989', 10);
@@ -15,6 +17,95 @@ const loader = new Loader(WORLD_DIR);
 const { game } = loader;
 
 const isValidName = (name) => typeof name === 'string' && NAME_RE.test(name);
+
+// Two parallel folders under world/: `code` for JS modules and `data` for JSON
+// overlays. Both are exposed through the same /files/:folder/... endpoints.
+const FOLDERS = {
+  code: {
+    dir: `${WORLD_DIR}/code`,
+    extension: '.js',
+    validate: null,
+  },
+  data: {
+    dir: `${WORLD_DIR}/data`,
+    extension: '.json',
+    validate: (buffer) => { JSON.parse(buffer.toString('utf8')); },
+  },
+};
+
+const getFolder = (name) =>
+  Object.hasOwn(FOLDERS, name) ? FOLDERS[name] : null;
+
+function backupFile(folder, name) {
+  const path = `${folder.dir}/${name}`;
+  if (!fs.existsSync(path)) return;
+  const backupDir = `${folder.dir}/.backups`;
+  if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir);
+  for (let i = 1; ; i++) {
+    const backupPath = `${backupDir}/${name}.${i}`;
+    if (!fs.existsSync(backupPath)) {
+      fs.copyFileSync(path, backupPath);
+      break;
+    }
+  }
+}
+
+const COMPASS_INVERSES = {
+  north: 'south', south: 'north',
+  east: 'west', west: 'east',
+  northeast: 'southwest', southwest: 'northeast',
+  northwest: 'southeast', southeast: 'northwest',
+};
+
+// When a room data overlay introduces a compass-direction exit, make sure the
+// target room has the inverse exit pointing back. Skips when the target
+// already has an exit in that direction (from code or another overlay) so we
+// never overwrite an intentional one-way passage.
+function ensureInverseExits(folder, sourceContent) {
+  if (sourceContent.type !== 'room' || !sourceContent.exits) return;
+  const sourceId = sourceContent.id;
+  if (!sourceId) return;
+  for (const [dir, targetId] of Object.entries(sourceContent.exits)) {
+    const inverse = COMPASS_INVERSES[dir];
+    if (!inverse || !targetId) continue;
+    const target = game.rooms[targetId];
+    if (target && target.exits && target.exits[inverse]) continue;
+    if (!isValidName(targetId)) continue;
+    const targetName = `${targetId}.json`;
+    const targetPath = `${folder.dir}/${targetName}`;
+    let targetData = { type: 'room', id: targetId };
+    if (fs.existsSync(targetPath)) {
+      try {
+        targetData = JSON.parse(fs.readFileSync(targetPath, 'utf8'));
+      } catch (e) { /* fall through with default stub */ }
+    }
+    targetData.exits = targetData.exits || {};
+    if (targetData.exits[inverse]) continue;
+    targetData.exits[inverse] = sourceId;
+    captureRoomCodeState(folder, targetName);
+    backupFile(folder, targetName);
+    fs.writeFileSync(targetPath, JSON.stringify(targetData, null, 2));
+  }
+}
+
+// First time a code-defined room gets a data overlay, snapshot its code-only
+// state into the backup history so the user can revert back to "no overlay".
+function captureRoomCodeState(folder, name) {
+  const backupDir = `${folder.dir}/.backups`;
+  // Only when there's no history yet — we don't want to keep re-snapshotting.
+  if (fs.existsSync(`${backupDir}/${name}.1`)) return;
+  const id = name.replace(/\.json$/i, '');
+  const room = game.rooms[id];
+  if (!room || !room._codeProps) return;
+  const codeState = { type: 'room', id };
+  if ('description' in room._codeProps) {
+    codeState.description = room._codeProps.description;
+  }
+  const exits = { ...(room._codeProps.exits || {}) };
+  if (Object.keys(exits).length) codeState.exits = exits;
+  if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir);
+  fs.writeFileSync(`${backupDir}/${name}.1`, JSON.stringify(codeState, null, 2));
+}
 
 // Serve the index.html as the root
 app.get('/', (req, res) => {
@@ -45,54 +136,60 @@ io.sockets.on('connection', (socket) => {
   });
 });
 
-// Code editor
-app.get('/files/', (req, res) => {
+app.get('/files/:folder/', (req, res) => {
+  const folder = getFolder(req.params.folder);
+  if (!folder) { res.status(404).end('Unknown folder'); return; }
   res.setHeader('Content-Type', 'application/json');
 
   const output = [];
-  for (const f of fs.readdirSync(WORLD_DIR)) {
-    if (f[0] === '.') continue;
-    const errorPath = `${WORLD_DIR}/.errors/${f}`;
-    const error = fs.existsSync(errorPath)
-      ? fs.readFileSync(errorPath, { encoding: 'utf-8' })
-      : null;
-    output.push({ filename: f, error });
+  if (fs.existsSync(folder.dir)) {
+    for (const f of fs.readdirSync(folder.dir)) {
+      if (f[0] === '.') continue;
+      const errorPath = `${folder.dir}/.errors/${f}`;
+      const error = fs.existsSync(errorPath)
+        ? fs.readFileSync(errorPath, { encoding: 'utf-8' })
+        : null;
+      const entry = { filename: f, error };
+      // For JSON data files, surface the type/id so the client can group them.
+      if (f.toLowerCase().endsWith('.json')) {
+        try {
+          const parsed = JSON.parse(fs.readFileSync(`${folder.dir}/${f}`, 'utf8'));
+          entry.type = parsed.type;
+          entry.id = parsed.id;
+        } catch (e) {
+          // Leave type/id undefined; the error file (if any) explains it.
+        }
+      }
+      output.push(entry);
+    }
   }
-
   output.sort((a, b) => a.filename.localeCompare(b.filename));
   res.end(JSON.stringify(output));
 });
 
-app.get('/files/:filename', (req, res) => {
+app.get('/files/:folder/:filename', (req, res) => {
+  const folder = getFolder(req.params.folder);
+  if (!folder) { res.status(404).end('Unknown folder'); return; }
   const name = req.params.filename;
   if (!isValidName(name)) {
     res.status(404).end("I don't like the name");
     return;
   }
 
-  let path = `${WORLD_DIR}/${name}`;
+  let path = `${folder.dir}/${name}`;
   if (req.query.version) {
-    path = `${WORLD_DIR}/.backups/${name}.${parseInt(req.query.version, 10)}`;
+    path = `${folder.dir}/.backups/${name}.${parseInt(req.query.version, 10)}`;
+  }
+  if (!fs.existsSync(path)) {
+    res.status(404).end('Not found');
+    return;
   }
   res.end(fs.readFileSync(path));
 });
 
-function backupWorldFile(name) {
-  const path = `${WORLD_DIR}/${name}`;
-  if (!fs.existsSync(path)) return;
-  if (!fs.existsSync(`${WORLD_DIR}/.backups`)) {
-    fs.mkdirSync(`${WORLD_DIR}/.backups`);
-  }
-  for (let i = 1; ; i++) {
-    const backupPath = `${WORLD_DIR}/.backups/${name}.${i}`;
-    if (!fs.existsSync(backupPath)) {
-      fs.copyFileSync(path, backupPath);
-      break;
-    }
-  }
-}
-
-app.put('/files/:filename', (req, res) => {
+app.put('/files/:folder/:filename', (req, res) => {
+  const folder = getFolder(req.params.folder);
+  if (!folder) { res.status(404).end('Unknown folder'); return; }
   const name = req.params.filename;
   if (!isValidName(name)) {
     res.status(404).end("I don't like the name");
@@ -103,23 +200,81 @@ app.put('/files/:filename', (req, res) => {
     buffer = Buffer.concat([buffer, Buffer.from(chunk)]);
   });
   req.on('end', () => {
-    backupWorldFile(name);
-    fs.writeFileSync(`${WORLD_DIR}/${name}`, buffer, { encoding: 'binary' });
+    if (folder.validate) {
+      try {
+        folder.validate(buffer);
+      } catch (e) {
+        res.status(400).end(`Invalid file: ${e.message}`);
+        return;
+      }
+    }
+    const path = `${folder.dir}/${name}`;
+    if (folder === FOLDERS.data && !fs.existsSync(path)) {
+      captureRoomCodeState(folder, name);
+    }
+    backupFile(folder, name);
+    fs.writeFileSync(path, buffer);
+    if (folder === FOLDERS.data) {
+      try {
+        ensureInverseExits(folder, JSON.parse(buffer.toString('utf8')));
+      } catch (e) { /* validate already ran, ignore */ }
+    }
     loader.update();
     res.status(201).end('');
   });
 });
 
-app.delete('/files/:filename', (req, res) => {
+app.delete('/files/:folder/:filename', (req, res) => {
+  const folder = getFolder(req.params.folder);
+  if (!folder) { res.status(404).end('Unknown folder'); return; }
   const name = req.params.filename;
   if (!isValidName(name)) {
     res.status(404).end("I don't like the name");
     return;
   }
-
-  backupWorldFile(name);
-  fs.unlinkSync(`${WORLD_DIR}/${name}`);
+  const path = `${folder.dir}/${name}`;
+  if (!fs.existsSync(path)) {
+    res.status(404).end('Not found');
+    return;
+  }
+  backupFile(folder, name);
+  fs.unlinkSync(path);
+  loader.update();
   res.status(201).end('');
+});
+
+app.get('/history/:folder/:filename', (req, res) => {
+  const folder = getFolder(req.params.folder);
+  if (!folder) { res.status(404).end('Unknown folder'); return; }
+  const name = req.params.filename;
+  if (!isValidName(name)) {
+    res.status(404).end("I don't like the name");
+    return;
+  }
+  const history = [];
+  for (let i = 1; ; i++) {
+    const backupPath = `${folder.dir}/.backups/${name}.${i}`;
+    if (!fs.existsSync(backupPath)) break;
+    history.unshift({ version: i, mtime: fs.statSync(backupPath).mtime });
+  }
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(history));
+});
+
+app.get('/logs/:folder/:filename', (req, res) => {
+  const folder = getFolder(req.params.folder);
+  if (!folder) { res.status(404).end('Unknown folder'); return; }
+  const name = req.params.filename;
+  if (!isValidName(name)) {
+    res.status(404).end("I don't like the name");
+    return;
+  }
+  const path = `${folder.dir}/.logs/${name}`;
+  if (fs.existsSync(path)) {
+    res.end(fs.readFileSync(path));
+  } else {
+    res.end('');
+  }
 });
 
 app.get('/edit/', (req, res) => {
@@ -130,34 +285,32 @@ app.get('/edit/:filename', (req, res) => {
   fs.createReadStream('./client/editfile.html').pipe(res);
 });
 
-app.get('/history/:filename', (req, res) => {
-  const name = req.params.filename;
-  if (!isValidName(name)) {
-    res.status(404).end("I don't like the name");
-    return;
-  }
-  const history = [];
-  for (let i = 1; ; i++) {
-    const backupPath = `${WORLD_DIR}/.backups/${name}.${i}`;
-    if (!fs.existsSync(backupPath)) break;
-    history.unshift({ version: i, mtime: fs.statSync(backupPath).mtime });
-  }
+// List every room currently known to the running game (from code + data).
+// `exits`/`description` are the merged state; `codeExits`/`codeDescription`
+// expose just what the JS module provided so the editor can tell them apart.
+app.get('/rooms', (req, res) => {
   res.setHeader('Content-Type', 'application/json');
-  res.end(JSON.stringify(history));
+  const rooms = Object.values(game.rooms).map((r) => {
+    const code = r._codeProps || {};
+    return {
+      id: r.id,
+      description: r.description,
+      codeDescription: 'description' in code ? code.description : null,
+      exits: { ...r.exits },
+      codeExits: { ...(code.exits || {}) },
+      hasData: fs.existsSync(`${FOLDERS.data.dir}/${r.id}.json`),
+    };
+  });
+  rooms.sort((a, b) => a.id.localeCompare(b.id));
+  res.end(JSON.stringify(rooms));
 });
 
-app.get('/logs/:filename', (req, res) => {
-  const name = req.params.filename;
-  if (!isValidName(name)) {
-    res.status(404).end("I don't like the name");
-    return;
-  }
-  const path = `${WORLD_DIR}/.logs/${name}`;
-  if (fs.existsSync(path)) {
-    res.end(fs.readFileSync(path));
-  } else {
-    res.end('');
-  }
+app.get('/rooms/', (req, res) => {
+  fs.createReadStream('./client/roomeditor.html').pipe(res);
+});
+
+app.get('/rooms/:id', (req, res) => {
+  fs.createReadStream('./client/roomeditor.html').pipe(res);
 });
 
 server.listen(port, '0.0.0.0', () => {

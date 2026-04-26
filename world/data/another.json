@@ -1,0 +1,7 @@
+{
+  "type": "room",
+  "id": "another",
+  "exits": {
+    "north": "home"
+  }
+}

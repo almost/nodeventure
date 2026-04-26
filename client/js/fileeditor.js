@@ -29,7 +29,7 @@ async function switchSession(filename, revert=False, version="current") {
   }
 
   if (revert) {
-    let url = "/files/" + filename;
+    let url = "/files/code/" + filename;
     if (version !== "current") {
       url += "?version=" + version;
     }
@@ -49,7 +49,7 @@ async function switchSession(filename, revert=False, version="current") {
 }
 
 async function loadFileList() {
-  const res = await fetch("/files");
+  const res = await fetch("/files/code/");
   const files = await res.json();
   const list = document.querySelector('#files ul')
   list.innerHTML = "";
@@ -100,7 +100,7 @@ function showHistory(filename, currentVersion="current") {
 
 async function loadHistory(filename, currentVersion) {
   showHistory(filename, currentVersion);
-  const res = await fetch("/history/" + filename)
+  const res = await fetch("/history/code/" + filename)
   history[filename] = await res.json();
   showHistory(filename, currentVersion);
 }
@@ -124,7 +124,7 @@ function showErrors() {
 
 async function updateLogs() {
   const filename = currentFilename;
-  const res = await fetch("/logs/" + filename)
+  const res = await fetch("/logs/code/" + filename)
   const logs = await res.text();
   if (filename === currentFilename && document.querySelector("#logs").innerText !== logs) {
     document.querySelector("#logs").innerText = logs;
@@ -192,7 +192,7 @@ document.querySelector('#uploadfile input').addEventListener("change", (e) => {
   const reader = new FileReader();
   reader.readAsArrayBuffer(file);
   reader.onload = async (evt) => {
-    const res = await fetch("/files/" + filename, { body: evt.target.result, method: "PUT" });
+    const res = await fetch("/files/code/" + filename, { body: evt.target.result, method: "PUT" });
     if (res.status == 201) {
       loadFileList();
       alert("Uploaded!")
@@ -213,7 +213,7 @@ document.querySelector('#files ul').addEventListener("click", (e) => {
   if (filename.endsWith(".txt") || filename.endsWith(".js")) {
     switchSession(filename, false);
   } else {
-    window.open("/files/" + filename, "_blank")
+    window.open("/files/code/" + filename, "_blank")
   }
 });
 

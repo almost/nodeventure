@@ -187,7 +187,11 @@ export class Game extends EventEmitter {
   // Create or return a room. Usually called by the facade in loader.js
   createRoom(id, options) {
     const room = this.rooms[id] = this.rooms[id] || new Room(this, id);
+    // Snapshot the code-provided props so data overlays can be re-applied
+    // cleanly on each load cycle without leaking state from prior overlays.
+    room._codeProps = { ...options, exits: { ...(options.exits || {}) } };
     Object.assign(room, options);
+    room.exits = { ...(options.exits || {}) };
     room.items = room.items || [];
 
     for (const exit in room.exits) {

@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>Nodeventure Room Editor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <style>
+      html, body, .container {
+        padding: 0;
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        font-family: system-ui, sans-serif;
+      }
+
+      .container {
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+      }
+
+      #rooms {
+        width: 14rem;
+        max-width: 22rem;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid #ddd;
+        overflow-y: auto;
+      }
+
+      #rooms ul {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 1rem 0;
+      }
+
+      #rooms li {
+        margin: 0.15rem 0;
+      }
+
+      #rooms li button {
+        width: 100%;
+        text-align: left;
+        padding: 0.4rem 0.5rem;
+        border: 1px solid #ccc;
+        background: white;
+        cursor: pointer;
+      }
+
+      #rooms li button.active {
+        background: #333;
+        color: white;
+        border-color: #333;
+      }
+
+      .badge {
+        display: inline-block;
+        font-size: 0.7rem;
+        padding: 0 0.3rem;
+        margin-left: 0.3rem;
+        border-radius: 3px;
+        background: #eee;
+        color: #555;
+      }
+      .badge.data { background: #dfe; color: #060; }
+      .changed { color: #c60; font-weight: bold; }
+
+      .right {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+        flex-shrink: 1;
+        min-width: 0;
+        padding: 1rem;
+        overflow-y: auto;
+      }
+
+      #toolbar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+      }
+
+      #toolbar h2 {
+        margin: 0;
+        flex-grow: 1;
+      }
+
+      label {
+        display: block;
+        margin-top: 1rem;
+        font-weight: bold;
+      }
+
+      textarea, input[type=text] {
+        width: 100%;
+        padding: 0.5rem;
+        font-family: inherit;
+        font-size: 1rem;
+        box-sizing: border-box;
+      }
+
+      textarea { min-height: 8rem; }
+
+      #exits {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+
+      .exit-row {
+        display: flex;
+        gap: 0.4rem;
+        align-items: center;
+      }
+
+      .exit-row input {
+        flex: 1;
+      }
+
+      .exit-row .source {
+        font-size: 0.75rem;
+        color: #888;
+        min-width: 4rem;
+        text-align: right;
+      }
+
+      button { padding: 0.4rem 0.8rem; cursor: pointer; }
+      .empty { color: #888; padding: 2rem; text-align: center; }
+      .links { margin-top: auto; font-size: 0.85rem; }
+      .links a { display: block; margin: 0.2rem 0; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div id="rooms">
+        <button id="new">+ New Room</button>
+        <ul id="room-list">
+          <li>Loading...</li>
+        </ul>
+        <div class="links">
+          <a href="/" target="_blank">Play!</a>
+          <a href="/edit/" target="_blank">Code editor</a>
+        </div>
+      </div>
+      <div class="right" id="editor">
+        <div class="empty">Pick a room on the left, or create a new one.</div>
+      </div>
+    </div>
+
+    <script src="/js/roomeditor.js"></script>
+  </body>
+</html>
