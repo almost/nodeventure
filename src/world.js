@@ -69,6 +69,8 @@ export class WorldModule extends EventEmitter {
       event: (eventName, subjectId, eventHandler) => handler(`${eventName}:${subjectId}`, eventHandler),
 
       preventDefault: () => game.preventDefault(),
+
+      lights: (color, ledIndex, fadeMs) => game.lights.set(color, ledIndex, fadeMs),
     };
   }
 }

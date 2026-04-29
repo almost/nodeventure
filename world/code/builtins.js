@@ -272,6 +272,9 @@ handler('enterRoom', function (player, room, game) {
   if (room.image) {
     player.display.show(room.image, 'room', {width: "100%", height: "100%"});
   }
+  if (room.color) {
+    lights(room.color, undefined, 600);
+  }
   game.emitEvent("enterRoom", player.name, player, room);
 });
 

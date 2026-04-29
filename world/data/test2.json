@@ -1,1 +1,15 @@
-{"type":"room","id":"test2","description":"X","exits":{"north":"home"},"items":[{"itemId":"banana","spawnSeconds":30}]}
+{
+  "type": "room",
+  "id": "test2",
+  "description": "X",
+  "color": "#0002ff",
+  "exits": {
+    "north": "home"
+  },
+  "items": [
+    {
+      "itemId": "banana",
+      "spawnSeconds": 30
+    }
+  ]
+}

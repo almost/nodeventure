@@ -1,9 +1,8 @@
 {
   "type": "room",
-  "id": "room2",
+  "id": "fdjdfs",
   "description": "A new room.",
-  "color": "#ff0000",
   "exits": {
-    "north": "home"
+    "northwest": "home"
   }
 }

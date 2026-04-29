@@ -2,6 +2,7 @@
  * contains the core logic but is extended by the world modules.
  */
 import { EventEmitter } from 'node:events';
+import { Lights } from './lights.js';
 
 // An interface to the client side code, see display.js on the client
 export class Display {
@@ -179,6 +180,7 @@ export class Game extends EventEmitter {
     this._loadingModule = null;
     setInterval(() => this.emit('tick'), 1000);
     this.display = new Display(this, this.broadcast);
+    this.lights = new Lights();
   }
 
   // Create or return a named player

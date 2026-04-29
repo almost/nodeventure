@@ -113,6 +113,9 @@ function captureCodeState(folder, name, parsed) {
     if ('description' in room._codeProps) {
       codeState.description = room._codeProps.description;
     }
+    if ('color' in room._codeProps) {
+      codeState.color = room._codeProps.color;
+    }
     const exits = { ...(room._codeProps.exits || {}) };
     if (Object.keys(exits).length) codeState.exits = exits;
   } else if (type === 'item') {
@@ -318,6 +321,8 @@ app.get('/rooms', (req, res) => {
       codeDescription: 'description' in code ? code.description : null,
       exits: { ...r.exits },
       codeExits: { ...(code.exits || {}) },
+      color: r.color || null,
+      codeColor: 'color' in code ? code.color : null,
       items: (r.items || []).map((it) => ({ name: it.name, short: it.short })),
       hasData: fs.existsSync(`${FOLDERS.data.dir}/${r.id}.json`),
     };

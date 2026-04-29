@@ -13,6 +13,7 @@
   ],
   "type": "module",
   "dependencies": {
+    "@ginden/blinkstick-v2": "^3.4.1",
     "express": "*",
     "isolated-vm": "^6.1.2",
     "nodemon": "^3.1.14",

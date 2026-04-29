@@ -170,6 +170,11 @@ export class Loader {
           ? props.description
           : 'This is a room';
         room.exits = { ...(props.exits || {}) };
+        if ('color' in props) {
+          room.color = props.color;
+        } else {
+          delete room.color;
+        }
       }
     }
 
@@ -209,6 +214,7 @@ export class Loader {
       let room = this.game.rooms[c.id];
       if (!room) room = this.game.createRoom(c.id, {});
       if ('description' in c) room.description = c.description;
+      if ('color' in c) room.color = c.color;
       if (c.exits) Object.assign(room.exits, c.exits);
       if (Array.isArray(c.items)) {
         for (const entry of c.items) {

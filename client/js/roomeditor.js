@@ -104,6 +104,10 @@ async function loadRoomDraft(id, version) {
       }))
     : [];
 
+  const codeColor = (room && room.codeColor) || null;
+  const colorFromData = !!(dataContent && 'color' in dataContent);
+  const color = colorFromData ? dataContent.color : codeColor;
+
   state.draft = {
     description: dataContent && 'description' in dataContent
       ? dataContent.description
@@ -112,6 +116,9 @@ async function loadRoomDraft(id, version) {
     exits,
     codeExits,
     items,
+    color,
+    colorFromData,
+    codeColor,
   };
   state.initial = JSON.stringify(state.draft);
 }
@@ -135,6 +142,13 @@ function renderEditor() {
     </div>
     <label for="description">Description <span class="badge" id="desc-source"></span></label>
     <textarea id="description"></textarea>
+    <label>Light color <span class="badge" id="color-source"></span></label>
+    <div id="color-row" class="color-row">
+      <input type="checkbox" id="color-enabled">
+      <input type="color" id="color-picker" value="#ffffff">
+      <input type="text" id="color-text" placeholder="#rrggbb or name" autocomplete="off">
+      <button type="button" id="color-clear">Clear</button>
+    </div>
     <label>Exits</label>
     <div id="exits"></div>
     <button id="add-exit" style="margin-top:0.5rem">+ Add exit</button>
@@ -157,6 +171,8 @@ function renderEditor() {
     renderRoomList();
   });
 
+  renderColor();
+
   renderExits();
   renderItems();
   renderHistory();
@@ -173,6 +189,64 @@ function renderEditor() {
     renderItems();
     renderRoomList();
   });
+}
+
+// Translate any string the server might serve (CSS name, '#rgb', '#rrggbb')
+// into a #rrggbb hex the <input type=color> understands. Returns null if the
+// value isn't a recognisable hex — the picker stays at its previous value.
+function colorToHex(value) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed.startsWith('#')) return null;
+  let hex = trimmed.slice(1);
+  if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('');
+  if (hex.length !== 6 || /[^0-9a-f]/.test(hex)) return null;
+  return '#' + hex;
+}
+
+function renderColor() {
+  const enabled = $('#color-enabled');
+  const picker = $('#color-picker');
+  const text = $('#color-text');
+  const clearBtn = $('#color-clear');
+  const source = $('#color-source');
+
+  const current = state.draft.color;
+  const isOn = current != null && current !== '';
+  enabled.checked = isOn;
+  text.value = isOn ? current : '';
+  const asHex = colorToHex(current);
+  if (asHex) picker.value = asHex;
+  picker.disabled = !isOn;
+  text.disabled = !isOn;
+  source.textContent = state.draft.colorFromData
+    ? 'overrides code'
+    : (state.draft.codeColor ? 'from code' : '');
+
+  const update = (value, fromData = true) => {
+    state.draft.color = value;
+    state.draft.colorFromData = fromData;
+    renderColor();
+    renderRoomList();
+  };
+
+  enabled.onchange = (e) => {
+    if (e.target.checked) {
+      update(state.draft.color || picker.value || '#ffffff');
+    } else {
+      update(null);
+    }
+  };
+  picker.oninput = (e) => update(e.target.value);
+  text.oninput = (e) => {
+    state.draft.color = e.target.value;
+    state.draft.colorFromData = true;
+    const hex = colorToHex(e.target.value);
+    if (hex) picker.value = hex;
+    source.textContent = 'overrides code';
+    renderRoomList();
+  };
+  clearBtn.onclick = () => update(null);
 }
 
 function renderExits() {
@@ -302,6 +376,10 @@ function buildOverlay() {
 
   if (state.draft.descriptionFromData) {
     overlay.description = state.draft.description;
+  }
+
+  if (state.draft.colorFromData) {
+    overlay.color = state.draft.color;
   }
 
   const exits = {};
