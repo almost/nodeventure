@@ -12,6 +12,7 @@ yarn-error.log*
 .npm
 .eslintcache
 
-world/.backups/
-world/.logs/
-world/.errors/
+
+.backups
+.logs
+.errors
