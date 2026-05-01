@@ -211,7 +211,8 @@
 
   // ask for a name via HTML modal, then continue
   function askName(cb) {
-    var storedUsername = localStorage.getItem("username") || "";
+    var isKiosk = document.body.classList.contains('kiosk');
+    var storedUsername = isKiosk ? "" : (localStorage.getItem("username") || "");
     $('#name-input').val(storedUsername);
     $('#name-modal').removeClass('modal-hidden');
     setTimeout(function () { $('#name-input').focus().select(); }, 0);
@@ -223,7 +224,7 @@
         $('#name-input').focus();
         return;
       }
-      localStorage.setItem("username", name);
+      if (!isKiosk) localStorage.setItem("username", name);
       $('#name-modal').addClass('modal-hidden');
       $('#name-form').off('submit');
       cb(name);
