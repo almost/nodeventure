@@ -370,7 +370,14 @@ app.get('/files/:folder/', requireEditAuth, (req, res) => {
   res.end(JSON.stringify(output));
 });
 
-app.get('/files/:folder/:filename', requireEditAuth, (req, res) => {
+// Images are referenced by rooms/items and rendered for every player, so the
+// current version is readable without unlocking the editor. Other folders, and
+// backup versions of any file, still require auth.
+app.get('/files/:folder/:filename', (req, res, next) => {
+  const folder = getFolder(req.params.folder);
+  if (folder && folder.kind === 'image' && !req.query.version) return next();
+  return requireEditAuth(req, res, next);
+}, (req, res) => {
   const folder = getFolder(req.params.folder);
   if (!folder) { res.status(404).end('Unknown folder'); return; }
   const name = req.params.filename;
