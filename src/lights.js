@@ -38,12 +38,13 @@ function parseColor(color) {
 }
 
 export class Lights {
-  constructor() {
+  constructor(broadcast = null) {
     this.blinkstick = null;
     this.connecting = null;
     this.fades = new Map();        // key → { from, to, start, end, current }
     this.lastColors = new Map();   // key → last colour we wrote
     this.timer = null;
+    this.broadcast = broadcast;
   }
 
   ensure() {
@@ -62,6 +63,17 @@ export class Lights {
   set(color, ledIndex, fadeMs = 0) {
     const tuple = parseColor(color);
     if (!tuple) return;
+
+    if (this.broadcast) {
+      this.broadcast({
+        lights: {
+          color: tuple,
+          ledIndex: ledIndex == null ? null : (ledIndex | 0),
+          fadeMs: fadeMs > 0 ? fadeMs : 0,
+        },
+      });
+    }
+
     this.ensure();
     if (!this.blinkstick) return;
 

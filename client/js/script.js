@@ -66,7 +66,23 @@
       addLine(message.error.string, { cls: message.error.type||"warn"});
       console.log(message.error.string);
     }
+
+    if (message.lights) {
+      setHeaderColor(message.lights.color, message.lights.fadeMs);
+    }
   });
+
+  function setHeaderColor(rgb, fadeMs) {
+    if (!rgb || rgb.length < 3) return;
+    var $header = $('header');
+    var ms = (typeof fadeMs === 'number' && fadeMs > 0) ? fadeMs : 0;
+    var transition = ms > 0 ? ('background-color ' + ms + 'ms linear') : 'none';
+    $header.css({
+      'transition': transition,
+      '-webkit-transition': transition,
+      'background-color': 'rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')'
+    });
+  }
 
   socket.on('disconnect', function () {
     addLine('DISCONNECTED!');

@@ -180,7 +180,7 @@ export class Game extends EventEmitter {
     this._loadingModule = null;
     setInterval(() => this.emit('tick'), 1000);
     this.display = new Display(this, this.broadcast);
-    this.lights = new Lights();
+    this.lights = new Lights((message) => this.broadcast(message));
   }
 
   // Create or return a named player
