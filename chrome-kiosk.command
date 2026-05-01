@@ -19,6 +19,6 @@ while true; do
         --overscroll-history-navigation=0 \
         --disable-features=TranslateUI \
         "$URL"
-    
+
     sleep 1
 done

@@ -20,6 +20,9 @@ const MAX_UPLOAD_BYTES = 128 * 1024;
 
 const loader = new Loader(WORLD_DIR);
 const { game } = loader;
+// Bridge in-game lights commands to a dedicated socket.io event so the
+// Blinkstick daemon (lights-client.js) can listen without becoming a player.
+game.lights.ioBroadcast = (payload) => io.sockets.emit('lights', payload);
 
 const isValidName = (name, folder) => {
   if (typeof name !== 'string' || !NAME_RE.test(name)) return false;
