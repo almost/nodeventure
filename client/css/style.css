@@ -236,8 +236,12 @@ h1 a, h1 a:visited {
       font-size:16px;
     }
     #output {
-      margin: 2em 0 5em 0;
-      padding:0 10px;
+      margin: 0;
+      padding: 10px;
+      width: 65%;
+    }
+    #display {
+      width: 35%;
     }
     #welcome {
       font-size:8px;
@@ -257,6 +261,27 @@ h1 a, h1 a:visited {
     #input button {
       font-size:14px;
       padding:5px 1%;
+    }
+    #input input {
+      width: 70%;
+    }
+    #input button {
+      width: 22%;
+    }
+    #name-form {
+      padding: 20px;
+      box-sizing: border-box;
+      width: 90%;
+    }
+    #name-form input {
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 240px;
+    }
+    #name-form input,
+    #name-form button {
+      font-size: 16px;
+      padding: 8px;
     }
   }
 
