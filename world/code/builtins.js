@@ -131,6 +131,26 @@ command('d','Shortcut for going down.',function (rest, player, game) {
   game.execute(player, "go down");
 });
 
+command('ne', 'Shortcut for going northeast.', function (rest, player, game) {
+  game.execute(player, "go northeast");
+});
+
+command('nw', 'Shortcut for going northwest.', function (rest, player, game) {
+  game.execute(player, "go northwest");
+});
+
+command('se', 'Shortcut for going southeast.', function (rest, player, game) {
+  game.execute(player, "go southeast");
+});
+
+command('sw', 'Shortcut for going southwest.', function (rest, player, game) {
+  game.execute(player, "go southwest");
+});
+
+command('l', 'Shortcut for look.', function (rest, player, game) {
+  game.execute(player, ("look " + rest).trim());
+});
+
 command('exits', "List the available exits", function (rest, player, game) {
   var exits = Object.keys(player.getCurrentRoom().exits);
   player.write("Exits: " + exits.join(","));
