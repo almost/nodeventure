@@ -45,6 +45,40 @@ try {
   console.log('No .editor-auth found — editing is disabled. Copy .editor-auth.example to enable.');
 }
 
+// Per-session transcript logs. One append-only file per socket login,
+// named with the connect time (ISO, colons → dashes for cross-FS safety)
+// followed by the player name. `>` lines are commands typed by the player,
+// `<` lines are text the server sent back, `!` lines are errors.
+const SESSIONS_DIR = './sessions';
+if (!fs.existsSync(SESSIONS_DIR)) fs.mkdirSync(SESSIONS_DIR, { recursive: true });
+
+function fsSafeIso() {
+  return new Date().toISOString().replace(/:/g, '-').replace(/\.\d{3}Z$/, 'Z');
+}
+
+function openSessionLog(playerName) {
+  const path = `${SESSIONS_DIR}/${fsSafeIso()}_${playerName}.log`;
+  const stream = fs.createWriteStream(path, { flags: 'a' });
+  stream.on('error', (e) => console.warn(`Session log error (${path}): ${e.message}`));
+  stream.write(`# session start ${new Date().toISOString()} player=${playerName}\n`);
+  return stream;
+}
+
+function logSessionLine(stream, prefix, text) {
+  if (!stream || stream.destroyed) return;
+  const ts = new Date().toISOString();
+  stream.write(`[${ts}] ${prefix} ${String(text).replace(/\r?\n/g, '\\n')}\n`);
+}
+
+function extractMessageText(message) {
+  if (!message) return null;
+  if (typeof message === 'string') return message;
+  if (message.string) return message.string;
+  if (message.html) return String(message.html).replace(/<[^>]*>/g, '');
+  if (message.error && message.error.string) return `[error] ${message.error.string}`;
+  return null;
+}
+
 function requireEditAuth(req, res, next) {
   if (!editorAuth) { res.status(403).end('Editing is disabled on this server.'); return; }
   const cookies = req.headers.cookie || '';
@@ -266,9 +300,15 @@ io.sockets.on('connection', (socket) => {
       return;
     }
     const player = game.createPlayer(name);
-    player.on('write', (string) => socket.emit('write', string));
+    const sessionLog = openSessionLog(player.name);
+    player.on('write', (message) => {
+      socket.emit('write', message);
+      const text = extractMessageText(message);
+      if (text) logSessionLine(sessionLog, '<', text);
+    });
     socket.on('command', (command) => {
       if (!command) return;
+      logSessionLine(sessionLog, '>', command);
       if (editorAuth) {
         const trimmed = command.trim();
         const prefix = editorAuth.command.toLowerCase() + ' ';
@@ -280,6 +320,7 @@ io.sockets.on('connection', (socket) => {
               ttlSec: EDIT_TOKEN_TTL_SEC,
             });
             socket.emit('write', { string: 'Editing unlocked for 12 hours.' });
+            logSessionLine(sessionLog, '*', 'editing unlocked');
             return;
           }
           // Wrong password: fall through, so the game responds as if it
@@ -291,6 +332,8 @@ io.sockets.on('connection', (socket) => {
     player.execute('look');
     game.emit('enterRoom', player, player.getCurrentRoom(), game);
     socket.on('disconnect', () => {
+      logSessionLine(sessionLog, '*', 'disconnect');
+      sessionLog.end();
       delete game.players[player.name];
     });
   });
