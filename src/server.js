@@ -24,6 +24,38 @@ const { game } = loader;
 // Blinkstick daemon (lights-client.js) can listen without becoming a player.
 game.lights.ioBroadcast = (payload) => io.sockets.emit('lights', payload);
 
+// Editor unlock: a player types `<command> <password>` in the game to
+// receive an `unlock` socket event whose token is then stored as a cookie.
+// Editor routes refuse to serve unless that cookie is present and valid.
+// Auth file is gitignored; ship `.editor-auth.example` as a template.
+// Format: a single line `<command> <password>` — first whitespace-delimited
+// word is the command, the rest of the line is the password (may contain spaces).
+const EDIT_TOKEN_TTL_SEC = 12 * 60 * 60;
+let editorAuth = null;
+try {
+  const raw = fs.readFileSync('./.editor-auth', 'utf8');
+  const line = raw.split(/\r?\n/)[0].trim();
+  const split = line.match(/^(\S+)\s+(.+)$/);
+  if (split) {
+    editorAuth = { command: split[1], password: split[2] };
+  } else {
+    console.warn('.editor-auth must contain `<command> <password>` on the first line — editing disabled.');
+  }
+} catch (e) {
+  console.log('No .editor-auth found — editing is disabled. Copy .editor-auth.example to enable.');
+}
+
+function requireEditAuth(req, res, next) {
+  if (!editorAuth) { res.status(403).end('Editing is disabled on this server.'); return; }
+  const cookies = req.headers.cookie || '';
+  const m = cookies.match(/(?:^|;\s*)editToken=([^;]+)/);
+  if (!m || decodeURIComponent(m[1]) !== editorAuth.password) {
+    res.status(401).end('Editing is locked. Use the in-game unlock command.');
+    return;
+  }
+  next();
+}
+
 const isValidName = (name, folder) => {
   if (typeof name !== 'string' || !NAME_RE.test(name)) return false;
   if (folder && !name.toLowerCase().endsWith(folder.extension)) return false;
@@ -236,7 +268,25 @@ io.sockets.on('connection', (socket) => {
     const player = game.createPlayer(name);
     player.on('write', (string) => socket.emit('write', string));
     socket.on('command', (command) => {
-      if (command) player.execute(command);
+      if (!command) return;
+      if (editorAuth) {
+        const trimmed = command.trim();
+        const prefix = editorAuth.command.toLowerCase() + ' ';
+        if (trimmed.toLowerCase().startsWith(prefix)) {
+          const provided = trimmed.slice(editorAuth.command.length + 1);
+          if (provided === editorAuth.password) {
+            socket.emit('unlock', {
+              token: editorAuth.password,
+              ttlSec: EDIT_TOKEN_TTL_SEC,
+            });
+            socket.emit('write', { string: 'Editing unlocked for 12 hours.' });
+            return;
+          }
+          // Wrong password: fall through, so the game responds as if it
+          // were any unknown command — no oracle for the secret name.
+        }
+      }
+      player.execute(command);
     });
     player.execute('look');
     game.emit('enterRoom', player, player.getCurrentRoom(), game);
@@ -246,7 +296,7 @@ io.sockets.on('connection', (socket) => {
   });
 });
 
-app.get('/files/:folder/', (req, res) => {
+app.get('/files/:folder/', requireEditAuth, (req, res) => {
   const folder = getFolder(req.params.folder);
   if (!folder) { res.status(404).end('Unknown folder'); return; }
   res.setHeader('Content-Type', 'application/json');
@@ -277,7 +327,7 @@ app.get('/files/:folder/', (req, res) => {
   res.end(JSON.stringify(output));
 });
 
-app.get('/files/:folder/:filename', (req, res) => {
+app.get('/files/:folder/:filename', requireEditAuth, (req, res) => {
   const folder = getFolder(req.params.folder);
   if (!folder) { res.status(404).end('Unknown folder'); return; }
   const name = req.params.filename;
@@ -298,7 +348,7 @@ app.get('/files/:folder/:filename', (req, res) => {
   res.end(fs.readFileSync(path));
 });
 
-app.put('/files/:folder/:filename', express.raw({ type: '*/*', limit: MAX_UPLOAD_BYTES }), (req, res) => {
+app.put('/files/:folder/:filename', requireEditAuth, express.raw({ type: '*/*', limit: MAX_UPLOAD_BYTES }), (req, res) => {
   const folder = getFolder(req.params.folder);
   if (!folder) { res.status(404).end('Unknown folder'); return; }
   const name = req.params.filename;
@@ -340,7 +390,7 @@ app.put('/files/:folder/:filename', express.raw({ type: '*/*', limit: MAX_UPLOAD
   res.status(201).end('');
 });
 
-app.delete('/files/:folder/:filename', (req, res) => {
+app.delete('/files/:folder/:filename', requireEditAuth, (req, res) => {
   const folder = getFolder(req.params.folder);
   if (!folder) { res.status(404).end('Unknown folder'); return; }
   const name = req.params.filename;
@@ -359,7 +409,7 @@ app.delete('/files/:folder/:filename', (req, res) => {
   res.status(201).end('');
 });
 
-app.get('/history/:folder/:filename', (req, res) => {
+app.get('/history/:folder/:filename', requireEditAuth, (req, res) => {
   const folder = getFolder(req.params.folder);
   if (!folder) { res.status(404).end('Unknown folder'); return; }
   const name = req.params.filename;
@@ -377,7 +427,7 @@ app.get('/history/:folder/:filename', (req, res) => {
   res.end(JSON.stringify(history));
 });
 
-app.get('/logs/:folder/:filename', (req, res) => {
+app.get('/logs/:folder/:filename', requireEditAuth, (req, res) => {
   const folder = getFolder(req.params.folder);
   if (!folder) { res.status(404).end('Unknown folder'); return; }
   const name = req.params.filename;
@@ -393,18 +443,18 @@ app.get('/logs/:folder/:filename', (req, res) => {
   }
 });
 
-app.get('/edit/', (req, res) => {
+app.get('/edit/', requireEditAuth, (req, res) => {
   fs.createReadStream('./client/editfile.html').pipe(res);
 });
 
-app.get('/edit/:filename', (req, res) => {
+app.get('/edit/:filename', requireEditAuth, (req, res) => {
   fs.createReadStream('./client/editfile.html').pipe(res);
 });
 
 // List every room currently known to the running game (from code + data).
 // `exits`/`description` are the merged state; `codeExits`/`codeDescription`
 // expose just what the JS module provided so the editor can tell them apart.
-app.get('/rooms', (req, res) => {
+app.get('/rooms', requireEditAuth, (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   const rooms = Object.values(game.rooms).map((r) => {
     const code = r._codeProps || {};
@@ -429,7 +479,7 @@ app.get('/rooms', (req, res) => {
 // List every item known to the running game (from code or data overlays).
 // `code*` fields expose the JS-provided values so the editor can show what
 // would be in effect without an overlay.
-app.get('/items', (req, res) => {
+app.get('/items', requireEditAuth, (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   const items = Object.values(game.items).map((it) => {
     const code = it._codeProps || {};
@@ -452,23 +502,23 @@ app.get('/items', (req, res) => {
   res.end(JSON.stringify(items));
 });
 
-app.get('/items/', (req, res) => {
+app.get('/items/', requireEditAuth, (req, res) => {
   fs.createReadStream('./client/itemeditor.html').pipe(res);
 });
 
-app.get('/items/:id', (req, res) => {
+app.get('/items/:id', requireEditAuth, (req, res) => {
   fs.createReadStream('./client/itemeditor.html').pipe(res);
 });
 
-app.get('/rooms/', (req, res) => {
+app.get('/rooms/', requireEditAuth, (req, res) => {
   fs.createReadStream('./client/roomeditor.html').pipe(res);
 });
 
-app.get('/images/', (req, res) => {
+app.get('/images/', requireEditAuth, (req, res) => {
   fs.createReadStream('./client/imageeditor.html').pipe(res);
 });
 
-app.get('/images/:id', (req, res) => {
+app.get('/images/:id', requireEditAuth, (req, res) => {
   fs.createReadStream('./client/imageeditor.html').pipe(res);
 });
 
@@ -628,7 +678,7 @@ app.get('/docs/:name', (req, res) => {
   res.end(renderDocPage(slug, html, slug, raw));
 });
 
-app.get('/rooms/:id', (req, res) => {
+app.get('/rooms/:id', requireEditAuth, (req, res) => {
   fs.createReadStream('./client/roomeditor.html').pipe(res);
 });
 

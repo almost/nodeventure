@@ -1,6 +1,10 @@
 (function () {
   'use strict';
 
+  // Always start kiosk pages locked: clear any edit cookie that survived
+  // a previous session, so an auto-reload also relocks after the TTL.
+  document.cookie = 'editToken=; max-age=0; path=/';
+
   var IDLE_MS = 60 * 1000;
   var welcome = document.getElementById('kiosk-welcome');
   var idleTimer = null;

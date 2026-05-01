@@ -1,0 +1,4 @@
+{
+  "watch": ["src", ".editor-auth"],
+  "ext": "js,json,mjs"
+}

@@ -45,6 +45,22 @@
 
 
   // set up sockets
+  function hasEditToken() {
+    return /(?:^|;\s*)editToken=/.test(document.cookie);
+  }
+  function revealEditLink() {
+    $('#edit-link').removeAttr('hidden');
+  }
+  if (hasEditToken()) revealEditLink();
+
+  socket.on('unlock', function (data) {
+    if (!data || !data.token) return;
+    var maxAge = data.ttlSec || 43200;
+    document.cookie = 'editToken=' + encodeURIComponent(data.token)
+      + '; max-age=' + maxAge + '; path=/; samesite=lax';
+    revealEditLink();
+  });
+
   socket.on('write', function (message) {
     if (message.string) {
       addLine(message.string);
