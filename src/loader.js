@@ -23,8 +23,10 @@ export class Loader {
     this.game = new Game();
     this.path = path;
     this.codePath = `${path}/code`;
-    this.dataPath = `${path}/data`;
+    this.roomsPath = `${path}/data/rooms`;
+    this.itemsPath = `${path}/data/items`;
     this.modules = {};
+    // Keyed by `${kind}/${filename}` so a room and an item can share an id.
     this.dataFiles = {};
     this.sandbox = new Sandbox();
 
@@ -37,8 +39,8 @@ export class Loader {
     if (!fs.existsSync(`${this.codePath}/.logs`)) {
       fs.mkdirSync(`${this.codePath}/.logs`);
     }
-    if (!fs.existsSync(this.dataPath)) {
-      fs.mkdirSync(this.dataPath);
+    for (const dir of [this.roomsPath, this.itemsPath]) {
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     }
 
     this.update();
@@ -137,26 +139,32 @@ export class Loader {
 
   updateData() {
     const seen = new Set();
-    if (fs.existsSync(this.dataPath)) {
-      for (const file of fs.readdirSync(this.dataPath)) {
+    const sources = [
+      { kind: 'room', dir: this.roomsPath },
+      { kind: 'item', dir: this.itemsPath },
+    ];
+    for (const { kind, dir } of sources) {
+      if (!fs.existsSync(dir)) continue;
+      for (const file of fs.readdirSync(dir)) {
         if (/^[.~]/.test(file)) continue;
         if (!file.toLowerCase().endsWith('.json')) continue;
-        const fullPath = `${this.dataPath}/${file}`;
+        const fullPath = `${dir}/${file}`;
         const stat = fs.statSync(fullPath);
         if (!stat.isFile()) continue;
-        seen.add(file);
+        const key = `${kind}/${file}`;
+        seen.add(key);
         try {
           const content = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
-          this.dataFiles[file] = { content };
+          this.dataFiles[key] = { kind, content };
         } catch (e) {
-          console.log(`Error parsing data file ${file}: ${e}`);
-          this.game.broadcast(`Oh no, ${file} is not valid JSON!`);
+          console.log(`Error parsing data file ${kind}/${file}: ${e}`);
+          this.game.broadcast(`Oh no, ${kind}/${file} is not valid JSON!`);
         }
       }
     }
     // Drop any data files that have been deleted from disk.
-    for (const file of Object.keys(this.dataFiles)) {
-      if (!seen.has(file)) delete this.dataFiles[file];
+    for (const key of Object.keys(this.dataFiles)) {
+      if (!seen.has(key)) delete this.dataFiles[key];
     }
   }
 
@@ -209,8 +217,9 @@ export class Loader {
 
     // Apply room overlays (description, exits, item spawns).
     for (const data of Object.values(this.dataFiles)) {
+      if (data.kind !== 'room') continue;
       const c = data.content;
-      if (c.type !== 'room' || !c.id) continue;
+      if (!c.id) continue;
       let room = this.game.rooms[c.id];
       if (!room) room = this.game.createRoom(c.id, {});
       if ('description' in c) room.description = c.description;
@@ -236,8 +245,9 @@ export class Loader {
     // Apply item overlays. Anything in the data file (other than type/id)
     // overrides the code-provided value.
     for (const data of Object.values(this.dataFiles)) {
+      if (data.kind !== 'item') continue;
       const c = data.content;
-      if (c.type !== 'item' || !c.id) continue;
+      if (!c.id) continue;
       let item = this.game.items[c.id];
       if (!item) item = this.game.createItem(c.id, {});
       for (const [key, value] of Object.entries(c)) {

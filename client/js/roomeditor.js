@@ -1,5 +1,5 @@
 // Room editor: list rooms on the left, edit description + exits on the right.
-// Saves create / overwrite a JSON file under world/data/<roomid>.json which
+// Saves create / overwrite a JSON file under world/data/rooms/<id>.json which
 // the loader applies as an overlay on top of the code-defined room.
 
 const state = {
@@ -71,12 +71,12 @@ async function selectRoom(id, version = 'current') {
 
 async function loadRoomDraft(id, version) {
   // Combine code-provided exits (from /rooms) with the data overlay
-  // (from world/data/<id>.json) so the user can see and override either.
+  // (from world/data/rooms/<id>.json) so the user can see and override either.
   const room = state.rooms.find((r) => r.id === id);
   const codeExits = (room && room.codeExits) || {};
 
   let dataContent = null;
-  let url = '/files/data/' + encodeURIComponent(id) + '.json';
+  let url = '/files/rooms/' + encodeURIComponent(id) + '.json';
   if (version !== 'current') url += '?version=' + version;
   const res = await fetch(url);
   if (res.status === 200) {
@@ -365,7 +365,7 @@ function renderHistory() {
 }
 
 async function loadHistory(id) {
-  const res = await fetch('/history/data/' + encodeURIComponent(id) + '.json');
+  const res = await fetch('/history/rooms/' + encodeURIComponent(id) + '.json');
   state.history = res.status === 200 ? await res.json() : [];
 }
 
@@ -403,7 +403,7 @@ function buildOverlay() {
 async function save() {
   const overlay = buildOverlay();
   const body = JSON.stringify(overlay, null, 2);
-  const url = '/files/data/' + encodeURIComponent(state.currentId) + '.json';
+  const url = '/files/rooms/' + encodeURIComponent(state.currentId) + '.json';
   const res = await fetch(url, { method: 'PUT', body });
   if (res.status !== 201) {
     alert(`Failed to save (${res.status}): ${await res.text()}`);
@@ -426,8 +426,9 @@ async function newRoom() {
     return;
   }
   // Create a minimal stub data file so the loader picks it up immediately.
+  // ?create=1 makes the server refuse if a room with that id already exists.
   const body = JSON.stringify({ type: 'room', id, description: 'A new room.' }, null, 2);
-  const res = await fetch('/files/data/' + encodeURIComponent(id) + '.json', { method: 'PUT', body });
+  const res = await fetch('/files/rooms/' + encodeURIComponent(id) + '.json?create=1', { method: 'PUT', body });
   if (res.status !== 201) {
     alert(`Failed to create (${res.status}): ${await res.text()}`);
     return;

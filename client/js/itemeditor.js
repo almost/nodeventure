@@ -1,6 +1,6 @@
 // Item editor: list items on the left, edit fields on the right. Saves
-// create / overwrite world/data/<id>.json overlays the loader applies on top
-// of the code-defined item.
+// create / overwrite world/data/items/<id>.json overlays the loader applies
+// on top of the code-defined item.
 
 const state = {
   items: [],          // list from /items
@@ -72,7 +72,7 @@ async function loadItemDraft(id, version) {
   const item = state.items.find((it) => it.id === id);
 
   let dataContent = null;
-  let url = '/files/data/' + encodeURIComponent(id) + '.json';
+  let url = '/files/items/' + encodeURIComponent(id) + '.json';
   if (version !== 'current') url += '?version=' + version;
   const res = await fetch(url);
   if (res.status === 200) {
@@ -201,7 +201,7 @@ function renderHistory() {
 }
 
 async function loadHistory(id) {
-  const res = await fetch('/history/data/' + encodeURIComponent(id) + '.json');
+  const res = await fetch('/history/items/' + encodeURIComponent(id) + '.json');
   state.history = res.status === 200 ? await res.json() : [];
 }
 
@@ -217,7 +217,7 @@ function buildOverlay() {
 async function save() {
   const overlay = buildOverlay();
   const body = JSON.stringify(overlay, null, 2);
-  const url = '/files/data/' + encodeURIComponent(state.currentId) + '.json';
+  const url = '/files/items/' + encodeURIComponent(state.currentId) + '.json';
   const res = await fetch(url, { method: 'PUT', body });
   if (res.status !== 201) {
     alert(`Failed to save (${res.status}): ${await res.text()}`);
@@ -239,8 +239,9 @@ async function newItem() {
     alert('Item ids must be letters/numbers/dot/dash/underscore only.');
     return;
   }
+  // ?create=1 makes the server refuse if an item with that id already exists.
   const body = JSON.stringify({ type: 'item', id, name: id, description: 'A new item.' }, null, 2);
-  const res = await fetch('/files/data/' + encodeURIComponent(id) + '.json', { method: 'PUT', body });
+  const res = await fetch('/files/items/' + encodeURIComponent(id) + '.json?create=1', { method: 'PUT', body });
   if (res.status !== 201) {
     alert(`Failed to create (${res.status}): ${await res.text()}`);
     return;

@@ -27,23 +27,83 @@ const isValidName = (name, folder) => {
   return true;
 };
 
-// Two parallel folders under world/: `code` for JS modules and `data` for JSON
-// overlays. Both are exposed through the same /files/:folder/... endpoints.
+// Folders under world/: `code` for JS modules; `rooms` and `items` for JSON
+// data overlays (one subfolder each so a room and an item can share an id
+// without colliding). All exposed via the same /files/:folder/... endpoints.
+const jsonValidate = (buffer) => { JSON.parse(buffer.toString('utf8')); };
 const FOLDERS = {
   code: {
     dir: `${WORLD_DIR}/code`,
     extension: '.js',
     validate: null,
+    kind: 'code',
+    label: 'file',
   },
-  data: {
-    dir: `${WORLD_DIR}/data`,
+  rooms: {
+    dir: `${WORLD_DIR}/data/rooms`,
     extension: '.json',
-    validate: (buffer) => { JSON.parse(buffer.toString('utf8')); },
+    validate: jsonValidate,
+    kind: 'room',
+    label: 'room',
+  },
+  items: {
+    dir: `${WORLD_DIR}/data/items`,
+    extension: '.json',
+    validate: jsonValidate,
+    kind: 'item',
+    label: 'item',
   },
 };
 
 const getFolder = (name) =>
   Object.hasOwn(FOLDERS, name) ? FOLDERS[name] : null;
+
+// One-time migration: legacy data files lived in world/data/*.json with their
+// kind in a `type` field. Move each into the appropriate subfolder so the
+// rooms and items namespaces are now separate on disk.
+function migrateLegacyDataFiles() {
+  const legacyDir = `${WORLD_DIR}/data`;
+  if (!fs.existsSync(legacyDir)) return;
+
+  const moveByType = (filePath, filename, isBackup) => {
+    let parsed;
+    try {
+      parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    } catch (e) {
+      return;
+    }
+    const target = parsed.type === 'item' ? FOLDERS.items
+                  : parsed.type === 'room' ? FOLDERS.rooms
+                  : null;
+    if (!target) return;
+    const destDir = isBackup ? `${target.dir}/.backups` : target.dir;
+    if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+    const destPath = `${destDir}/${filename}`;
+    if (fs.existsSync(destPath)) return; // don't clobber if already migrated
+    fs.renameSync(filePath, destPath);
+    console.log(`Migrated ${isBackup ? '.backups/' : ''}${filename} → ${target.kind}s/`);
+  };
+
+  for (const f of fs.readdirSync(legacyDir)) {
+    if (!f.endsWith('.json')) continue;
+    const fullPath = `${legacyDir}/${f}`;
+    if (!fs.statSync(fullPath).isFile()) continue;
+    moveByType(fullPath, f, false);
+  }
+
+  const legacyBackups = `${legacyDir}/.backups`;
+  if (fs.existsSync(legacyBackups)) {
+    for (const bf of fs.readdirSync(legacyBackups)) {
+      if (!/^.+\.json\.\d+$/.test(bf)) continue;
+      moveByType(`${legacyBackups}/${bf}`, bf, true);
+    }
+  }
+}
+
+migrateLegacyDataFiles();
+for (const folder of Object.values(FOLDERS)) {
+  if (!fs.existsSync(folder.dir)) fs.mkdirSync(folder.dir, { recursive: true });
+}
 
 function backupFile(folder, name) {
   const path = `${folder.dir}/${name}`;
@@ -71,7 +131,7 @@ const COMPASS_INVERSES = {
 // already has an exit in that direction (from code or another overlay) so we
 // never overwrite an intentional one-way passage.
 function ensureInverseExits(folder, sourceContent) {
-  if (sourceContent.type !== 'room' || !sourceContent.exits) return;
+  if (folder.kind !== 'room' || !sourceContent.exits) return;
   const sourceId = sourceContent.id;
   if (!sourceId) return;
   for (const [dir, targetId] of Object.entries(sourceContent.exits)) {
@@ -99,15 +159,13 @@ function ensureInverseExits(folder, sourceContent) {
 
 // First time a code-defined entity gets a data overlay, snapshot its code-only
 // state into the backup history so the user can revert back to "no overlay".
-// Handles both room and item overlays based on the parsed content's `type`.
 function captureCodeState(folder, name, parsed) {
   const backupDir = `${folder.dir}/.backups`;
   if (fs.existsSync(`${backupDir}/${name}.1`)) return;
   const id = (parsed && parsed.id) || name.replace(/\.json$/i, '');
-  const type = parsed && parsed.type;
 
   let codeState = null;
-  if (type === 'room') {
+  if (folder.kind === 'room') {
     const room = game.rooms[id];
     if (!room || !room._codeProps) return;
     codeState = { type: 'room', id };
@@ -119,7 +177,7 @@ function captureCodeState(folder, name, parsed) {
     }
     const exits = { ...(room._codeProps.exits || {}) };
     if (Object.keys(exits).length) codeState.exits = exits;
-  } else if (type === 'item') {
+  } else if (folder.kind === 'item') {
     const item = game.items[id];
     if (!item || !item._codeProps) return;
     codeState = { type: 'item', id };
@@ -222,6 +280,13 @@ app.put('/files/:folder/:filename', express.raw({ type: '*/*', limit: MAX_UPLOAD
     res.status(404).end("I don't like the name");
     return;
   }
+  const path = `${folder.dir}/${name}`;
+  // ?create=1 means "I'm making a new one" — refuse if it's already there.
+  if (req.query.create === '1' && fs.existsSync(path)) {
+    const id = name.replace(/\.json$/i, '');
+    res.status(409).end(`A ${folder.label} called "${id}" already exists.`);
+    return;
+  }
   const buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
   if (folder.validate) {
     try {
@@ -231,17 +296,17 @@ app.put('/files/:folder/:filename', express.raw({ type: '*/*', limit: MAX_UPLOAD
       return;
     }
   }
-  const path = `${folder.dir}/${name}`;
+  const isData = folder.kind === 'room' || folder.kind === 'item';
   let parsed = null;
-  if (folder === FOLDERS.data) {
+  if (isData) {
     try { parsed = JSON.parse(buffer.toString('utf8')); } catch (e) { /* already validated */ }
   }
-  if (folder === FOLDERS.data && !fs.existsSync(path)) {
+  if (isData && !fs.existsSync(path)) {
     captureCodeState(folder, name, parsed);
   }
   backupFile(folder, name);
   fs.writeFileSync(path, buffer);
-  if (folder === FOLDERS.data && parsed) {
+  if (isData && parsed) {
     ensureInverseExits(folder, parsed);
   }
   loader.update();
@@ -325,7 +390,7 @@ app.get('/rooms', (req, res) => {
       color: r.color || null,
       codeColor: 'color' in code ? code.color : null,
       items: (r.items || []).map((it) => ({ name: it.name, short: it.short })),
-      hasData: fs.existsSync(`${FOLDERS.data.dir}/${r.id}.json`),
+      hasData: fs.existsSync(`${FOLDERS.rooms.dir}/${r.id}.json`),
     };
   });
   rooms.sort((a, b) => a.id.localeCompare(b.id));
@@ -351,7 +416,7 @@ app.get('/items', (req, res) => {
       codeShort: 'short' in code ? code.short : null,
       codeImage: 'image' in code ? code.image : null,
       codeGettable: 'gettable' in code ? code.gettable : null,
-      hasData: fs.existsSync(`${FOLDERS.data.dir}/${it.id}.json`),
+      hasData: fs.existsSync(`${FOLDERS.items.dir}/${it.id}.json`),
     };
   });
   items.sort((a, b) => a.id.localeCompare(b.id));
