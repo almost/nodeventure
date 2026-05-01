@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import express from 'express';
 import { Server } from 'socket.io';
+import { marked } from 'marked';
 import { Loader } from './loader.js';
 
 const app = express();
@@ -367,6 +368,162 @@ app.get('/items/:id', (req, res) => {
 
 app.get('/rooms/', (req, res) => {
   fs.createReadStream('./client/roomeditor.html').pipe(res);
+});
+
+const DOCS_DIR = './docs';
+const DOCS_NAME_RE = /^[a-zA-Z0-9_-]+\.md$/;
+
+function renderDocPage(title, bodyHtml, currentSlug, rawMarkdown) {
+  const links = fs.existsSync(DOCS_DIR)
+    ? fs.readdirSync(DOCS_DIR)
+        .filter((f) => f.endsWith('.md') && f !== 'README.md')
+        .sort()
+        .map((f) => {
+          const slug = f.replace(/\.md$/, '');
+          const cls = slug === currentSlug ? ' class="active"' : '';
+          return `<li><a href="/docs/${slug}"${cls}>${slug}</a></li>`;
+        })
+        .join('')
+    : '';
+  const homeCls = currentSlug == null ? ' class="active"' : '';
+  // JSON-encode the raw markdown so it survives any characters; escape `</`
+  // so a literal "</script>" inside the markdown can't break out.
+  const mdJson = JSON.stringify(rawMarkdown).replace(/<\//g, '<\\/');
+  return `<!doctype html>
+<html><head><meta charset="utf-8"><title>${title} — Nodeventure docs</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; display: flex; min-height: 100vh; }
+  nav { background: #1a1a1a; color: #ccc; padding: 16px 20px; min-width: 180px; }
+  nav h2 { color: white; font-size: 14px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: 1px; }
+  nav ul { list-style: none; padding: 0; margin: 0; }
+  nav li { margin: 6px 0; }
+  nav a { color: #6c6; text-decoration: none; }
+  nav a:hover { color: white; }
+  nav a.active { color: white; font-weight: bold; }
+  nav .copy-all {
+    margin-top: 24px; width: 100%;
+    background: transparent; color: #6c6; border: 1px solid #6c6;
+    padding: 8px 10px; border-radius: 4px; font: inherit; font-size: 12px;
+    cursor: pointer; text-align: left;
+  }
+  nav .copy-all:hover { background: #6c6; color: #1a1a1a; }
+  nav .copy-all.copied { background: #6c6; color: #1a1a1a; }
+  main { flex: 1; padding: 24px 40px; max-width: 820px; line-height: 1.55; color: #222; position: relative; }
+  h1, h2, h3 { color: #111; }
+  h1 { border-bottom: 2px solid #6c6; padding-bottom: 8px; }
+  h3 { margin-top: 28px; }
+  code { background: #f4f4f4; padding: 1px 5px; border-radius: 3px; font-size: 0.95em; }
+  pre { background: #f4f4f4; padding: 12px 16px; border-radius: 4px; overflow-x: auto; }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; margin: 12px 0; }
+  th, td { border: 1px solid #ddd; padding: 6px 12px; text-align: left; }
+  th { background: #f0f0f0; }
+  a { color: #060; }
+  #copy-md {
+    position: absolute; top: 24px; right: 40px;
+    background: #1a1a1a; color: #6c6; border: 1px solid #6c6;
+    padding: 6px 12px; border-radius: 4px; font: inherit; font-size: 13px;
+    cursor: pointer;
+  }
+  #copy-md:hover { background: #6c6; color: #1a1a1a; }
+  #copy-md.copied { background: #6c6; color: #1a1a1a; border-color: #6c6; }
+</style>
+</head><body>
+<nav>
+  <h2>Docs</h2>
+  <ul>
+    <li><a href="/docs/"${homeCls}>index</a></li>
+    ${links}
+  </ul>
+  <button id="copy-all" class="copy-all" type="button">Copy all docs as Markdown</button>
+</nav>
+<main>
+  <button id="copy-md" type="button">Copy as Markdown</button>
+  ${bodyHtml}
+</main>
+<script id="raw-md" type="application/json">${mdJson}</script>
+<script>
+  (function () {
+    function flash(btn, label, original) {
+      var origText = original;
+      btn.textContent = label;
+      btn.classList.add('copied');
+      setTimeout(function () {
+        btn.textContent = origText;
+        btn.classList.remove('copied');
+      }, 1500);
+    }
+
+    var btn = document.getElementById('copy-md');
+    var md = JSON.parse(document.getElementById('raw-md').textContent);
+    btn.addEventListener('click', function () {
+      navigator.clipboard.writeText(md).then(function () {
+        flash(btn, 'Copied!', 'Copy as Markdown');
+      }, function () {
+        flash(btn, 'Copy failed', 'Copy as Markdown');
+      });
+    });
+
+    var allBtn = document.getElementById('copy-all');
+    allBtn.addEventListener('click', function () {
+      fetch('/docs/all.md').then(function (r) { return r.text(); }).then(function (text) {
+        return navigator.clipboard.writeText(text);
+      }).then(function () {
+        flash(allBtn, 'Copied!', 'Copy all docs as Markdown');
+      }, function () {
+        flash(allBtn, 'Copy failed', 'Copy all docs as Markdown');
+      });
+    });
+  })();
+</script>
+</body></html>`;
+}
+
+function buildAllDocsMarkdown() {
+  if (!fs.existsSync(DOCS_DIR)) return '';
+  const files = fs.readdirSync(DOCS_DIR)
+    .filter((f) => f.endsWith('.md'))
+    // README first, then alphabetical.
+    .sort((a, b) => {
+      if (a === 'README.md') return -1;
+      if (b === 'README.md') return 1;
+      return a.localeCompare(b);
+    });
+  return files
+    .map((f) => `<!-- ${f} -->\n\n${fs.readFileSync(`${DOCS_DIR}/${f}`, 'utf8').trim()}`)
+    .join('\n\n---\n\n') + '\n';
+}
+
+app.get('/docs/', (req, res) => {
+  const path = `${DOCS_DIR}/README.md`;
+  if (!fs.existsSync(path)) { res.status(404).end('No docs'); return; }
+  const raw = fs.readFileSync(path, 'utf8');
+  const html = marked.parse(raw)
+    .replace(/href="([a-zA-Z0-9_-]+)\.md(#[^"]*)?"/g, 'href="/docs/$1$2"');
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.end(renderDocPage('Index', html, null, raw));
+});
+
+// Must come before /docs/:name so it isn't shadowed.
+app.get('/docs/all.md', (req, res) => {
+  res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+  res.end(buildAllDocsMarkdown());
+});
+
+app.get('/docs/:name', (req, res) => {
+  const name = req.params.name;
+  // Allow links to be /docs/foo or /docs/foo.md
+  const slug = name.replace(/\.md$/i, '');
+  const filename = `${slug}.md`;
+  if (!DOCS_NAME_RE.test(filename)) { res.status(404).end('Not found'); return; }
+  const path = `${DOCS_DIR}/${filename}`;
+  if (!fs.existsSync(path)) { res.status(404).end('Not found'); return; }
+  const raw = fs.readFileSync(path, 'utf8');
+  const html = marked.parse(raw)
+    // Rewrite cross-doc relative links so .md becomes /docs/<slug>
+    .replace(/href="([a-zA-Z0-9_-]+)\.md(#[^"]*)?"/g, 'href="/docs/$1$2"');
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.end(renderDocPage(slug, html, slug, raw));
 });
 
 app.get('/rooms/:id', (req, res) => {

@@ -36,6 +36,7 @@ export class WorldModule extends EventEmitter {
     };
 
     return {
+      game,
       command: game.createCommand.bind(game),
       room: game.createRoom.bind(game),
       item: game.createItem.bind(game),
