@@ -18,6 +18,8 @@ let connecting = null;
 const fades = new Map();      // key → { from, to, start, end, current }
 const lastColors = new Map(); // key → last RGB tuple written
 let timer = null;
+let inTestPattern = false;
+let testPatternDone = false;
 
 async function ensureDevice() {
   if (blinkstick || connecting) return connecting;
@@ -72,7 +74,35 @@ function tick() {
   }
 }
 
+// Brief startup sequence so a human in the room can see the daemon woke up
+// and the strip is wired correctly. Suppresses incoming light events until
+// it finishes.
+async function runTestPattern() {
+  if (!blinkstick || testPatternDone) return;
+  testPatternDone = true;
+  inTestPattern = true;
+  console.log('Running startup test pattern.');
+  const ledCount = blinkstick.ledCount || 8;
+  const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // Chase a white pixel across the strip.
+  for (let i = 0; i < ledCount; i++) {
+    write('all', [0, 0, 0]);
+    write(i, [255, 255, 255]);
+    await delay(60);
+  }
+  // Full-strip RGB flashes.
+  for (const color of [[255, 0, 0], [0, 255, 0], [0, 0, 255]]) {
+    write('all', color);
+    await delay(250);
+  }
+  write('all', [0, 0, 0]);
+  inTestPattern = false;
+  console.log('Startup test pattern complete.');
+}
+
 async function applyLights(payload) {
+  if (inTestPattern) return;
   if (!payload || !Array.isArray(payload.color)) return;
   await ensureDevice();
   if (!blinkstick) return;
@@ -111,7 +141,7 @@ async function applyLights(payload) {
   startTimer();
 }
 
-ensureDevice();
+ensureDevice().then(runTestPattern);
 
 const socket = ioClient(URL, { reconnection: true });
 socket.on('connect', () => console.log(`Connected to ${URL}.`));
