@@ -183,6 +183,7 @@ export class Loader {
         } else {
           delete room.color;
         }
+        room.image = 'image' in props ? props.image : null;
       }
     }
 
@@ -224,6 +225,7 @@ export class Loader {
       if (!room) room = this.game.createRoom(c.id, {});
       if ('description' in c) room.description = c.description;
       if ('color' in c) room.color = c.color;
+      if ('image' in c) room.image = c.image;
       if (c.exits) Object.assign(room.exits, c.exits);
       if (Array.isArray(c.items)) {
         for (const entry of c.items) {

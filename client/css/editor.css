@@ -219,6 +219,36 @@ button {
   background: none;
 }
 
+.image-select {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.image-select > select {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem;
+  font: inherit;
+}
+
+.image-preview {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #ddd 25%, transparent 25%),
+    linear-gradient(-45deg, #ddd 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ddd 75%),
+    linear-gradient(-45deg, transparent 75%, #ddd 75%);
+  background-size: 12px 12px;
+  background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+}
+
 /* Code editor specific: ace editor needs a fixed/flex container, plus error
    and log panels stack underneath. */
 #editor.ace-host {
@@ -254,4 +284,102 @@ button {
 #uploadfile {
   margin-top: 1rem;
   font-size: 0.85rem;
+}
+
+/* Image editor: paint area + tools. */
+.paint-wrap {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+#paint-stage {
+  /* Checkerboard so transparent pixels are visible. */
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #ddd 25%, transparent 25%),
+    linear-gradient(-45deg, #ddd 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ddd 75%),
+    linear-gradient(-45deg, transparent 75%, #ddd 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  border: 1px solid #888;
+  display: inline-block;
+  line-height: 0;
+  /* Prevent the browser from interpreting drag as a select/scroll gesture. */
+  touch-action: none;
+  user-select: none;
+}
+
+#paint {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  display: block;
+  cursor: crosshair;
+}
+
+.paint-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 12rem;
+}
+
+.tool-row {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.tool-row button {
+  min-width: 2.4rem;
+  padding: 0.3rem 0.5rem;
+  background: #f4f4f4;
+  border: 1px solid #aaa;
+}
+
+.tool-row button.active {
+  background: #333;
+  color: white;
+  border-color: #333;
+}
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(8, 1.4rem);
+  gap: 0.2rem;
+}
+
+.swatch {
+  width: 1.4rem;
+  height: 1.4rem;
+  border: 1px solid #888;
+  cursor: pointer;
+  padding: 0;
+}
+
+.swatch.active {
+  outline: 2px solid #060;
+  outline-offset: 1px;
+}
+
+.swatch.transparent {
+  background-image:
+    linear-gradient(45deg, #ccc 25%, transparent 25%),
+    linear-gradient(-45deg, #ccc 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ccc 75%),
+    linear-gradient(-45deg, transparent 75%, #ccc 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+  background-color: #fff;
+}
+
+.tool-info {
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.tool-info input[type=number] {
+  width: 4rem;
 }

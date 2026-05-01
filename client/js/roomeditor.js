@@ -5,6 +5,7 @@
 const state = {
   rooms: [],          // list from /rooms
   items: [],          // list from /items
+  images: [],         // PNG filenames from /files/images/
   currentId: null,
   draft: null,        // { description, exits: [{name, to, source}], items: [{itemId, spawnSeconds}] }
   initial: null,      // snapshot used to detect changes
@@ -28,6 +29,11 @@ async function loadRooms() {
 async function loadItems() {
   const res = await fetch('/items');
   state.items = await res.json();
+}
+
+async function loadImages() {
+  const res = await fetch('/files/images/');
+  state.images = res.status === 200 ? await res.json() : [];
 }
 
 function renderRoomList() {
@@ -108,6 +114,10 @@ async function loadRoomDraft(id, version) {
   const colorFromData = !!(dataContent && 'color' in dataContent);
   const color = colorFromData ? dataContent.color : codeColor;
 
+  const codeImage = (room && room.codeImage) || null;
+  const imageFromData = !!(dataContent && 'image' in dataContent);
+  const image = imageFromData ? dataContent.image : (room ? room.image : null);
+
   state.draft = {
     description: dataContent && 'description' in dataContent
       ? dataContent.description
@@ -119,6 +129,9 @@ async function loadRoomDraft(id, version) {
     color,
     colorFromData,
     codeColor,
+    image,
+    imageFromData,
+    codeImage,
   };
   state.initial = JSON.stringify(state.draft);
 }
@@ -149,6 +162,11 @@ function renderEditor() {
       <input type="text" id="color-text" placeholder="#rrggbb or name" autocomplete="off">
       <button type="button" id="color-clear">Clear</button>
     </div>
+    <label>Image <span class="badge" id="image-source"></span></label>
+    <div class="image-select">
+      <select id="image-select"></select>
+      <img class="image-preview" id="image-preview" alt="">
+    </div>
     <label>Exits</label>
     <div id="exits"></div>
     <button id="add-exit" style="margin-top:0.5rem">+ Add exit</button>
@@ -172,6 +190,7 @@ function renderEditor() {
   });
 
   renderColor();
+  renderImage();
 
   renderExits();
   renderItems();
@@ -247,6 +266,49 @@ function renderColor() {
     renderRoomList();
   };
   clearBtn.onclick = () => update(null);
+}
+
+function renderImage() {
+  const select = $('#image-select');
+  const preview = $('#image-preview');
+  const source = $('#image-source');
+  if (!select) return;
+
+  const known = state.images.map((im) => '/files/images/' + im.filename);
+  const all = new Set(known);
+  const value = state.draft.image || '';
+  if (value) all.add(value);
+
+  select.innerHTML = '';
+  const blank = document.createElement('option');
+  blank.value = '';
+  blank.textContent = '(none)';
+  if (!value) blank.selected = true;
+  select.appendChild(blank);
+  for (const url of [...all].sort()) {
+    const opt = document.createElement('option');
+    opt.value = url;
+    const isKnown = known.includes(url);
+    opt.textContent = isKnown
+      ? url.replace(/^\/files\/images\//, '')
+      : url + ' (missing)';
+    if (url === value) opt.selected = true;
+    select.appendChild(opt);
+  }
+
+  if (value) { preview.src = value; preview.style.display = ''; }
+  else { preview.removeAttribute('src'); preview.style.display = 'none'; }
+
+  source.textContent = state.draft.imageFromData
+    ? 'overrides code'
+    : (state.draft.codeImage ? 'from code' : '');
+
+  select.onchange = (e) => {
+    state.draft.image = e.target.value || null;
+    state.draft.imageFromData = true;
+    renderImage();
+    renderRoomList();
+  };
 }
 
 function renderExits() {
@@ -382,6 +444,10 @@ function buildOverlay() {
     overlay.color = state.draft.color;
   }
 
+  if (state.draft.imageFromData) {
+    overlay.image = state.draft.image || null;
+  }
+
   const exits = {};
   for (const exit of state.draft.exits) {
     if (!exit.name) continue;
@@ -409,7 +475,7 @@ async function save() {
     alert(`Failed to save (${res.status}): ${await res.text()}`);
     return;
   }
-  await Promise.all([loadRooms(), loadItems()]);
+  await Promise.all([loadRooms(), loadItems(), loadImages()]);
   await selectRoom(state.currentId);
 }
 
@@ -452,6 +518,6 @@ function loadFromUrl() {
 
 document.addEventListener('DOMContentLoaded', () => {
   $('#new').addEventListener('click', newRoom);
-  Promise.all([loadRooms(), loadItems()]).then(loadFromUrl);
-  setInterval(() => { loadRooms(); loadItems(); }, 10000);
+  Promise.all([loadRooms(), loadItems(), loadImages()]).then(loadFromUrl);
+  setInterval(() => { loadRooms(); loadItems(); loadImages(); }, 10000);
 });

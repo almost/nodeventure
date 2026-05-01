@@ -4,6 +4,7 @@
 
 const state = {
   items: [],          // list from /items
+  images: [],         // list of PNG filenames from /files/images/
   currentId: null,
   draft: null,        // editable copy
   initial: null,
@@ -19,7 +20,7 @@ const FIELDS = [
   { key: 'name', label: 'Name', type: 'text', placeholder: 'display name (defaults to id)' },
   { key: 'short', label: 'Short', type: 'text', placeholder: 'e.g. "a tart yellow lemon"' },
   { key: 'description', label: 'Description', type: 'textarea' },
-  { key: 'image', label: 'Image URL', type: 'url' },
+  { key: 'image', label: 'Image', type: 'image-select' },
   { key: 'gettable', label: 'Gettable', type: 'checkbox' },
 ];
 
@@ -27,6 +28,11 @@ async function loadItems() {
   const res = await fetch('/items');
   state.items = await res.json();
   renderItemList();
+}
+
+async function loadImages() {
+  const res = await fetch('/files/images/');
+  state.images = res.status === 200 ? await res.json() : [];
 }
 
 function renderItemList() {
@@ -127,6 +133,31 @@ function renderEditor() {
         </div>
       `;
     }
+    if (f.type === 'image-select') {
+      // Build the option list from world/images. Include the current value
+      // even if it points outside that folder (e.g. an external URL or a
+      // since-deleted image) so the user can see and replace it.
+      const known = state.images.map((im) => '/files/images/' + im.filename);
+      const all = new Set(known);
+      if (value) all.add(value);
+      const options = ['<option value="">(none)</option>']
+        .concat([...all].sort().map((url) => {
+          const isKnown = known.includes(url);
+          const label = isKnown
+            ? url.replace(/^\/files\/images\//, '')
+            : url + ' (missing)';
+          return `<option value="${escapeAttr(url)}"${url === value ? ' selected' : ''}>${escapeAttr(label)}</option>`;
+        }))
+        .join('');
+      const previewSrc = value ? escapeAttr(value) : '';
+      return `
+        <label>${f.label} ${sourceLabel}</label>
+        <div class="image-select">
+          <select data-field="${f.key}">${options}</select>
+          <img class="image-preview" data-preview="${f.key}" src="${previewSrc}" alt="" style="${value ? '' : 'display:none'}">
+        </div>
+      `;
+    }
     return `
       <label>${f.label} ${sourceLabel}</label>
       <input type="${f.type}" data-field="${f.key}" placeholder="${escapeAttr(f.placeholder || '')}" value="${escapeAttr(value)}">
@@ -153,6 +184,18 @@ function renderEditor() {
         state.draft.fields[f.key] = el.checked;
         state.draft.fromData[f.key] = true;
         updateSourceBadge(f.key);
+        renderItemList();
+      });
+    } else if (f.type === 'image-select') {
+      el.addEventListener('change', () => {
+        state.draft.fields[f.key] = el.value;
+        state.draft.fromData[f.key] = true;
+        updateSourceBadge(f.key);
+        const preview = document.querySelector(`[data-preview="${f.key}"]`);
+        if (preview) {
+          if (el.value) { preview.src = el.value; preview.style.display = ''; }
+          else { preview.removeAttribute('src'); preview.style.display = 'none'; }
+        }
         renderItemList();
       });
     } else {
@@ -264,6 +307,6 @@ function loadFromUrl() {
 
 document.addEventListener('DOMContentLoaded', () => {
   $('#new').addEventListener('click', newItem);
-  loadItems().then(loadFromUrl);
-  setInterval(loadItems, 10000);
+  Promise.all([loadItems(), loadImages()]).then(loadFromUrl);
+  setInterval(() => { loadItems(); loadImages(); }, 10000);
 });

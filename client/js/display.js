@@ -19,6 +19,11 @@
     }
 
     var parent = document.querySelector("#display");
+    // Clear anything left over from a previous room — show()/draw() append to
+    // #display, so without this the previous room's images stay on screen.
+    if (parent) {
+      while (parent.firstChild) parent.removeChild(parent.firstChild);
+    }
     // this.iframe = document.createElement('iframe');
     // parent.appendChild(this.iframe);
     // this.doc = this.iframe.contentDocument;

@@ -29,8 +29,15 @@ const isValidName = (name, folder) => {
 
 // Folders under world/: `code` for JS modules; `rooms` and `items` for JSON
 // data overlays (one subfolder each so a room and an item can share an id
-// without colliding). All exposed via the same /files/:folder/... endpoints.
+// without colliding); `images` for PNG pixel art the world references.
+// All exposed via the same /files/:folder/... endpoints.
 const jsonValidate = (buffer) => { JSON.parse(buffer.toString('utf8')); };
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const pngValidate = (buffer) => {
+  if (buffer.length < 8 || !buffer.subarray(0, 8).equals(PNG_SIGNATURE)) {
+    throw new Error('Not a PNG file');
+  }
+};
 const FOLDERS = {
   code: {
     dir: `${WORLD_DIR}/code`,
@@ -52,6 +59,14 @@ const FOLDERS = {
     validate: jsonValidate,
     kind: 'item',
     label: 'item',
+  },
+  images: {
+    dir: `${WORLD_DIR}/images`,
+    extension: '.png',
+    validate: pngValidate,
+    kind: 'image',
+    label: 'image',
+    mime: 'image/png',
   },
 };
 
@@ -175,6 +190,9 @@ function captureCodeState(folder, name, parsed) {
     if ('color' in room._codeProps) {
       codeState.color = room._codeProps.color;
     }
+    if ('image' in room._codeProps) {
+      codeState.image = room._codeProps.image;
+    }
     const exits = { ...(room._codeProps.exits || {}) };
     if (Object.keys(exits).length) codeState.exits = exits;
   } else if (folder.kind === 'item') {
@@ -269,6 +287,7 @@ app.get('/files/:folder/:filename', (req, res) => {
     res.status(404).end('Not found');
     return;
   }
+  if (folder.mime) res.setHeader('Content-Type', folder.mime);
   res.end(fs.readFileSync(path));
 });
 
@@ -283,7 +302,8 @@ app.put('/files/:folder/:filename', express.raw({ type: '*/*', limit: MAX_UPLOAD
   const path = `${folder.dir}/${name}`;
   // ?create=1 means "I'm making a new one" — refuse if it's already there.
   if (req.query.create === '1' && fs.existsSync(path)) {
-    const id = name.replace(/\.json$/i, '');
+    const extRe = new RegExp(folder.extension.replace(/\./g, '\\.') + '$', 'i');
+    const id = name.replace(extRe, '');
     res.status(409).end(`A ${folder.label} called "${id}" already exists.`);
     return;
   }
@@ -389,6 +409,8 @@ app.get('/rooms', (req, res) => {
       codeExits: { ...(code.exits || {}) },
       color: r.color || null,
       codeColor: 'color' in code ? code.color : null,
+      image: r.image || null,
+      codeImage: 'image' in code ? code.image : null,
       items: (r.items || []).map((it) => ({ name: it.name, short: it.short })),
       hasData: fs.existsSync(`${FOLDERS.rooms.dir}/${r.id}.json`),
     };
@@ -433,6 +455,14 @@ app.get('/items/:id', (req, res) => {
 
 app.get('/rooms/', (req, res) => {
   fs.createReadStream('./client/roomeditor.html').pipe(res);
+});
+
+app.get('/images/', (req, res) => {
+  fs.createReadStream('./client/imageeditor.html').pipe(res);
+});
+
+app.get('/images/:id', (req, res) => {
+  fs.createReadStream('./client/imageeditor.html').pipe(res);
 });
 
 const DOCS_DIR = './docs';

@@ -59,6 +59,14 @@ h1 a, h1 a:visited {
       overflow: auto;
   }
 
+  /* Pixel-art images shouldn't blur when scaled up, and shouldn't stretch
+     even if width and height are set independently. */
+  #display img {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      object-fit: contain;
+  }
+
 
   #display iframe {
       width: 50%;
