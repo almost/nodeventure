@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>Nodeventure - Tiles</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/css/editor.css">
+  </head>
+  <body>
+    <nav id="topnav">
+      <span class="brand">Nodeventure</span>
+      <a class="tab" href="/rooms/">Rooms</a>
+      <a class="tab" href="/items/">Items</a>
+      <a class="tab active" href="/tiles/">Tiles</a>
+      <a class="tab" href="/edit/">Code</a>
+      <span class="spacer"></span>
+      <span class="ext">
+        <a href="/" target="_blank">Play</a>
+        <a href="https://github.com/asyncjs/nodeventure/wiki" target="_blank">Docs</a>
+      </span>
+    </nav>
+    <div class="container">
+      <div id="rooms" class="sidebar">
+        <button id="new">+ New Tile</button>
+        <ul id="room-list">
+          <li>Loading...</li>
+        </ul>
+        <div class="image-uploader">
+          <label for="upload-image" style="margin-top:0;font-weight:normal;font-size:0.8rem">Upload image</label>
+          <input type="file" id="upload-image" accept="image/*">
+        </div>
+      </div>
+      <div class="right" id="editor">
+        <div class="empty">Pick a tile on the left, or create a new one.</div>
+      </div>
+    </div>
+
+    <script src="/js/tileeditor.js"></script>
+  </body>
+</html>

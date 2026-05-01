@@ -1,0 +1,12 @@
+{
+  "type": "tile",
+  "id": "banana",
+  "frames": [
+    {
+      "image": "textures_02_08_25.png",
+      "index": 603
+    }
+  ],
+  "speed": 200,
+  "passable": true
+}

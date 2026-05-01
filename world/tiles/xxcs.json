@@ -1,0 +1,12 @@
+{
+  "type": "tile",
+  "id": "xxcs",
+  "frames": [
+    {
+      "image": "textures_02_08_25.png",
+      "index": 296
+    }
+  ],
+  "speed": 200,
+  "passable": true
+}
