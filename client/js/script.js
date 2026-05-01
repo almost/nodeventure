@@ -7,7 +7,7 @@
   "use strict";
   
   var
-  socket = io.connect(location.href),
+  socket = io.connect(location.origin),
   lineFeed = [],
   inputPress = 0,
 
@@ -84,9 +84,10 @@
     });
   }
 
+  var currentUsername = null;
   socket.on('disconnect', function () {
     addLine('DISCONNECTED!');
-    connect();
+    if (currentUsername) connect(currentUsername);
   });
 
 
@@ -190,22 +191,54 @@
   }
 
 
-  // locally store the username
-  var storedUsername = localStorage.getItem("username") || "";
-  var username;
-  while (!username) {
-    username = prompt("Name?", storedUsername);
+  // focus management — keep focus on the command box (or name input while modal shown)
+  function focusActive() {
+    if (!$('#name-modal').hasClass('modal-hidden')) {
+      $('#name-input').focus();
+    } else {
+      $('#command').focus();
+    }
   }
-  localStorage.setItem("username", username);
+  $(document).on('mousedown click', function (e) {
+    if ($(e.target).closest('#name-form, #command, #name-input, #send, a, button').length) return;
+    e.preventDefault();
+    focusActive();
+  });
+  $(document).on('focusout', 'input, button', function () {
+    setTimeout(focusActive, 0);
+  });
+
+
+  // ask for a name via HTML modal, then continue
+  function askName(cb) {
+    var storedUsername = localStorage.getItem("username") || "";
+    $('#name-input').val(storedUsername);
+    $('#name-modal').removeClass('modal-hidden');
+    setTimeout(function () { $('#name-input').focus().select(); }, 0);
+
+    $('#name-form').on('submit', function (e) {
+      e.preventDefault();
+      var name = ($('#name-input').val() || '').trim();
+      if (!name) {
+        $('#name-input').focus();
+        return;
+      }
+      localStorage.setItem("username", name);
+      $('#name-modal').addClass('modal-hidden');
+      $('#name-form').off('submit');
+      cb(name);
+    });
+  }
 
 
   // INIT !
-  function connect() {
+  function connect(username) {
+    currentUsername = username;
     socket.emit('login', username);
     init();
     addLine('Connecting...');
-    $("input#command").focus();
+    focusActive();
   }
-  connect();
+  askName(function (name) { connect(name); });
 
 })();

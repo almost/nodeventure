@@ -215,6 +215,10 @@ app.get('/', (req, res) => {
   fs.createReadStream('./client/index.html').pipe(res);
 });
 
+app.get('/kiosk', (req, res) => {
+  fs.createReadStream('./client/kiosk.html').pipe(res);
+});
+
 // Serve static files: js and css
 app.use('/', express.static('./client'));
 

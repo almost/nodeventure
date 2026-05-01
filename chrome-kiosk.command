@@ -1,5 +1,5 @@
 #!/bin/bash
-URL="http://127.0.0.1:8989"
+URL="http://127.0.0.1:8989/kiosk"
 
 while true; do
     killall Dock 2>/dev/null
