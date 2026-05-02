@@ -95,17 +95,9 @@ export class Loader {
       const code = fs.readFileSync(fullPath, 'utf8');
 
       if (fileLower.endsWith('.js')) {
-        this.loadModule(file, mtime, (module) => {
+        this.loadModule(file, mtime, (module, log) => {
           const logPath = `${this.codePath}/.logs/${file}`;
           const errorPath = `${this.codePath}/.errors/${file}`;
-
-          const log = (...args) => {
-            console.log(`[${file}] `, ...args);
-            fs.appendFileSync(logPath, args.map((x) => util.inspect(x)).join(' ') + '\n');
-          };
-          // Game.createRoom looks up `_loadingModule.console.log` to surface
-          // missing-inverse-exit warnings while a module loads.
-          module.console = { log };
 
           fs.writeFileSync(logPath, '');
 
@@ -262,13 +254,21 @@ export class Loader {
 
   loadModule(name, mtime, func) {
     const errorPath = `${this.codePath}/.errors/${name}`;
+    const logPath = `${this.codePath}/.logs/${name}`;
     const reportError = (message) => fs.writeFileSync(errorPath, message);
+    const log = (...args) => {
+      console.log(`[${name}] `, ...args);
+      fs.appendFileSync(logPath, args.map((x) => util.inspect(x)).join(' ') + '\n');
+    };
 
-    const module = new WorldModule(this.game, reportError);
+    const module = new WorldModule(this.game, reportError, log);
     module.mtime = mtime;
+    // Game.createRoom looks up `_loadingModule.console.log` to surface
+    // missing-inverse-exit warnings while a module loads.
+    module.console = { log };
     this.modules[name] = module;
     try {
-      func(module);
+      func(module, log);
       this.game.warn(`Reloaded world module: ${name}`);
     } catch (e) {
       this.game.error(`Error loading world module: ${name}\n${e.stack}`);

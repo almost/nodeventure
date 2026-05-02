@@ -9,15 +9,17 @@ import { EventEmitter } from 'node:events';
  * functions, never run inside the isolate.
  */
 export class WorldModule extends EventEmitter {
-  constructor(game, reportError) {
+  constructor(game, reportError, log) {
     super();
     this.game = game;
     this.reportError = reportError;
+    this.log = log || (() => {});
   }
 
   globals() {
     const game = this.game;
     const reportError = this.reportError;
+    const log = this.log;
     const self = this;
 
     const handler = (event, fn) => {
@@ -26,9 +28,8 @@ export class WorldModule extends EventEmitter {
           fn.apply(undefined, args);
         } catch (e) {
           reportError(e.stack || String(e));
+          log(`Error handling ${event} event:`, e.stack || String(e));
           game.broadcast(`Oh dear there was an error handling the ${event} event!`);
-          console.log(`Error running handler for event: ${event}`);
-          console.log(e.stack || e);
           self.removeListener(event, wrapped);
         }
       };
@@ -60,6 +61,7 @@ export class WorldModule extends EventEmitter {
           try {
             fn();
           } catch (e) {
+            log(`Error in setTimeout:`, e.stack || String(e));
             game.broadcast('Error running timeout');
             game.broadcast(e.stack || String(e));
           }
