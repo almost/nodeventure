@@ -28,7 +28,7 @@ Arguments: `[player, room, game]`
 The same event scoped to a single room id. Fires alongside the unscoped
 `enterRoom`.
 
-    event("enterRoom", "kitchen", (game, player, room) => {
+    event("enterRoom", "kitchen", (player, room, game) => {
       player.write("The toaster pings.");
     });
 
