@@ -62,18 +62,28 @@ export class Loader {
   processSpawns() {
     const now = Date.now() / 1000;
     for (const spawn of Object.values(this.game.spawns)) {
-      if (now - spawn.lastSpawn < spawn.spawnSeconds) continue;
-      spawn.lastSpawn = now;
-      const room = this.game.rooms[spawn.roomId];
-      const def = this.game.items[spawn.itemId];
-      if (!room || !def) continue;
-      if (room.getItem(def.id)) continue;
-      // Clone the item def into the room. Strip framework-only fields so the
-      // copy is a plain item the rest of the game can mutate independently.
-      const { _codeProps, game: _g, ...rest } = def;
-      const copy = { ...rest };
-      room.items.push(copy);
-      this.game.emit('spawn', room, copy);
+      try {
+        if (now - spawn.lastSpawn < spawn.spawnSeconds) continue;
+        spawn.lastSpawn = now;
+        const room = this.game.rooms[spawn.roomId];
+        const def = this.game.items[spawn.itemId];
+        if (!room || !def) continue;
+        // Defensive: world code can clobber room.items (e.g. assigning a
+        // non-array value). Repair it rather than crash the whole tick.
+        if (!Array.isArray(room.items)) {
+          console.log(`processSpawns: room "${room.id}" had non-array items, resetting`);
+          room.items = [];
+        }
+        if (room.getItem(def.id)) continue;
+        // Clone the item def into the room. Strip framework-only fields so the
+        // copy is a plain item the rest of the game can mutate independently.
+        const { _codeProps, game: _g, ...rest } = def;
+        const copy = { ...rest };
+        room.items.push(copy);
+        this.game.emit('spawn', room, copy);
+      } catch (e) {
+        console.log(`processSpawns: error for spawn ${spawn.roomId}:${spawn.itemId}: ${e.stack || e}`);
+      }
     }
   }
 
